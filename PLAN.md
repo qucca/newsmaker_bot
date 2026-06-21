@@ -15,7 +15,7 @@
 - [x] **T1. Bootstrap и тулчейн.** package.json (`engines` Node 24.x), tsconfig strict,
   ESLint+Prettier, npm-скрипты, `.gitignore`, `.env.example`, пустой каркас `src/`.
   Без бизнес-логики. *(детали ниже)*
-- [ ] **T2. Config (`src/config`).** Загрузка+валидация env через zod (токен бота,
+- [x] **T2. Config (`src/config`).** Загрузка+валидация env через zod (токен бота,
   Anthropic key, путь к БД, кап юзеров и т.п.), fail-fast, секреты не в логах.
 - [ ] **T3. DB-слой (`src/db`).** Один инстанс `better-sqlite3`, раннер миграций
   (`migrations/*.sql` по порядку), первая миграция со схемой MVP. ⚠️ Точный DDL
