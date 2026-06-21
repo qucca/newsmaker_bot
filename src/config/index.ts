@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+/** Путь к файлу БД по умолчанию (используется и в схеме, и в getDatabasePath). */
+export const DEFAULT_DATABASE_PATH = './data/news_bot.sqlite';
+
 /**
  * Схема переменных окружения.
  *
@@ -10,7 +13,7 @@ import { z } from 'zod';
 const EnvSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1, 'обязателен (токен от @BotFather)'),
   ANTHROPIC_API_KEY: z.string().min(1, 'обязателен (ключ Anthropic API)'),
-  DATABASE_PATH: z.string().min(1).default('./data/news_bot.sqlite'),
+  DATABASE_PATH: z.string().min(1).default(DEFAULT_DATABASE_PATH),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
@@ -55,6 +58,16 @@ export function getConfig(): Config {
     cached = parseConfig(process.env);
   }
   return cached;
+}
+
+/**
+ * Путь к БД без полной валидации конфига: миграциям (`npm run migrate`) нужен только путь,
+ * а не секреты (токен/ключ), чтобы команда работала на свежем чекауте и в CI.
+ */
+export function getDatabasePath(): string {
+  loadEnvFile();
+  const fromEnv = process.env.DATABASE_PATH;
+  return fromEnv !== undefined && fromEnv.length > 0 ? fromEnv : DEFAULT_DATABASE_PATH;
 }
 
 /**
