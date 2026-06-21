@@ -12,7 +12,7 @@
 
 ## Фаза 0 — фундамент
 
-- [ ] **T1. Bootstrap и тулчейн.** package.json (`engines` Node 24.x), tsconfig strict,
+- [x] **T1. Bootstrap и тулчейн.** package.json (`engines` Node 24.x), tsconfig strict,
   ESLint+Prettier, npm-скрипты, `.gitignore`, `.env.example`, пустой каркас `src/`.
   Без бизнес-логики. *(детали ниже)*
 - [ ] **T2. Config (`src/config`).** Загрузка+валидация env через zod (токен бота,

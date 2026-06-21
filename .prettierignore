@@ -1,0 +1,9 @@
+dist/
+node_modules/
+coverage/
+package-lock.json
+
+# Prose-документы — не реформатируем Prettier'ом (избегаем шумных переносов)
+CLAUDE.md
+PLAN.md
+docs/
