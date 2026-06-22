@@ -22,11 +22,12 @@ logs/
 *.log
 npm-debug.log*
 
-# ОС / редакторы
+# ОС / редакторы / инструменты
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+.claude/
 *.swp
 
 # Тесты / покрытие
