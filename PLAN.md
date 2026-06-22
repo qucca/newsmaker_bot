@@ -27,7 +27,7 @@
 - [x] **T4. Сбор L1 (`src/sources`).** Чтение списка фидов из `sources`, фетч через
   `rss-parser`, изоляция дохлых фидов, таймауты+retry/backoff, conditional GET
   (ETag/If-Modified-Since), кап кандидатов. (Google News тут НЕТ.)
-- [ ] **T5. Канонизация URL + дедуп прогона.** Канонизация → `articles.canonical_url`
+- [x] **T5. Канонизация URL + дедуп прогона.** Канонизация → `articles.canonical_url`
   UNIQUE, дедуп ДО обогащения. Детерминированно → юнит-тесты. (Резолв обёрток не
   нужен — L1 даёт чистые URL.)
 - [ ] **T6. LLM-клиент (`src/llm`).** Единая обёртка над Anthropic SDK, structured
