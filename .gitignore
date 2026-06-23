@@ -33,3 +33,7 @@ Thumbs.db
 # Тесты / покрытие
 coverage/
 .nyc_output/
+
+# Superpowers (спеки/планы/скретч-леджер) — не версионируем
+.superpowers/
+docs/superpowers/

@@ -116,3 +116,30 @@ export function writeEnrichment(
   });
   return { updated: run(rows) };
 }
+
+/** Кандидат, обогащённый, но ещё не кластеризованный (вход T8). */
+export interface UnclusteredArticle {
+  id: number;
+  clusterKey: string | null;
+  publishedAt: number | null;
+  fetchedAt: number;
+}
+
+const SELECT_UNCLUSTERED = `
+  SELECT id, cluster_key AS clusterKey, published_at AS publishedAt, fetched_at AS fetchedAt
+  FROM articles
+  WHERE enriched_at IS NOT NULL AND cluster_id IS NULL
+  ORDER BY id
+  LIMIT @limit`;
+
+/** Обогащённые статьи без кластера (partial-индекс idx_articles_unclustered), с капом. */
+export function selectUnclustered(db: Database.Database, limit: number): UnclusteredArticle[] {
+  return db.prepare(SELECT_UNCLUSTERED).all({ limit }) as UnclusteredArticle[];
+}
+
+const ASSIGN_CLUSTER = `UPDATE articles SET cluster_id = @clusterId WHERE id = @id`;
+
+/** Привязывает статью к кластеру (cluster_id ссылается на существующий clusters.id). */
+export function assignCluster(db: Database.Database, id: number, clusterId: number): void {
+  db.prepare(ASSIGN_CLUSTER).run({ id, clusterId });
+}

@@ -19,6 +19,9 @@ const EnvSchema = z.object({
   // Обогащение (T7): размер батча на один LLM-вызов и кап кандидатов за прогон.
   MAX_ENRICH_BATCH: z.coerce.number().int().positive().default(20),
   ENRICH_RUN_CAP: z.coerce.number().int().positive().default(200),
+  // Кластеризация (T8): окно матчинга (часы, от first_seen) и кап статей за прогон.
+  CLUSTER_WINDOW_HOURS: z.coerce.number().int().positive().default(72),
+  CLUSTER_RUN_CAP: z.coerce.number().int().positive().default(500),
 });
 
 export type Config = Readonly<z.infer<typeof EnvSchema>>;

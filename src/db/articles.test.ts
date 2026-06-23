@@ -6,6 +6,8 @@ import {
   insertArticles,
   selectUnenriched,
   writeEnrichment,
+  selectUnclustered,
+  assignCluster,
   type ArticleInsert,
   type EnrichmentWrite,
 } from './articles.js';
@@ -188,5 +190,34 @@ test('writeEnrichment: пишет поля, ставит enriched_at и убир
   assert.equal(r.is_major, 1);
   assert.deepEqual(JSON.parse(r.neutral_facts as string), ['Fact one.', 'Fact two.']);
   assert.equal(selectUnenriched(db, 10).length, 0); // больше не необогащён
+  db.close();
+});
+
+test('selectUnclustered: только обогащённые без кластера', () => {
+  const db = memDb();
+  insertArticles(db, [row({ canonicalUrl: 'https://e.com/a' }), row({ canonicalUrl: 'https://e.com/b' })]);
+  assert.equal(selectUnclustered(db, 10).length, 0); // ни одна не обогащена
+  const id = selectUnenriched(db, 10)[0].id;
+  writeEnrichment(db, [enrichRow({ id })]);
+  const got = selectUnclustered(db, 10);
+  assert.equal(got.length, 1);
+  assert.equal(got[0].id, id);
+  assert.equal(got[0].clusterKey, 'nato|ukraine');
+  db.close();
+});
+
+test('assignCluster: проставляет cluster_id и убирает из некластеризованных', () => {
+  const db = memDb();
+  insertArticles(db, [row({ canonicalUrl: 'https://e.com/a' })]);
+  const id = selectUnenriched(db, 10)[0].id;
+  writeEnrichment(db, [enrichRow({ id })]);
+  const cid = Number(
+    db.prepare(`INSERT INTO clusters (cluster_key, first_seen, updated_at) VALUES ('k', 1, 1)`).run()
+      .lastInsertRowid,
+  );
+  assignCluster(db, id, cid);
+  assert.equal(selectUnclustered(db, 10).length, 0);
+  const r = db.prepare(`SELECT cluster_id FROM articles WHERE id = ?`).get(id) as Record<string, unknown>;
+  assert.equal(r.cluster_id, cid);
   db.close();
 });

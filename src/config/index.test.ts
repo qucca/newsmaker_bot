@@ -13,3 +13,15 @@ test('parseConfig: переопределение обогащения из env 
   assert.equal(cfg.MAX_ENRICH_BATCH, 5);
   assert.equal(cfg.ENRICH_RUN_CAP, 50);
 });
+
+test('parseConfig: кластеризация — дефолты окна и капа', () => {
+  const cfg = parseConfig({ TELEGRAM_BOT_TOKEN: 't' });
+  assert.equal(cfg.CLUSTER_WINDOW_HOURS, 72);
+  assert.equal(cfg.CLUSTER_RUN_CAP, 500);
+});
+
+test('parseConfig: кластеризация — значения из env коэрсятся', () => {
+  const cfg = parseConfig({ TELEGRAM_BOT_TOKEN: 't', CLUSTER_WINDOW_HOURS: '48', CLUSTER_RUN_CAP: '100' });
+  assert.equal(cfg.CLUSTER_WINDOW_HOURS, 48);
+  assert.equal(cfg.CLUSTER_RUN_CAP, 100);
+});
