@@ -16,6 +16,9 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1, 'обязателен (ключ Anthropic API)').optional(),
   DATABASE_PATH: z.string().min(1).default(DEFAULT_DATABASE_PATH),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  // Обогащение (T7): размер батча на один LLM-вызов и кап кандидатов за прогон.
+  MAX_ENRICH_BATCH: z.coerce.number().int().positive().default(20),
+  ENRICH_RUN_CAP: z.coerce.number().int().positive().default(200),
 });
 
 export type Config = Readonly<z.infer<typeof EnvSchema>>;

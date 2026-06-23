@@ -10,6 +10,8 @@ export interface ParsedItem {
   link?: string;
   isoDate?: string;
   pubDate?: string;
+  contentSnippet?: string; // plain-text сниппет (rss-parser снимает теги сам)
+  content?: string; // HTML; фолбэк, если нет сниппета
 }
 
 const parser = new Parser();
@@ -22,6 +24,8 @@ export async function parseFeed(xml: string): Promise<ParsedItem[]> {
     link: item.link,
     isoDate: item.isoDate,
     pubDate: item.pubDate,
+    contentSnippet: item.contentSnippet,
+    content: item.content,
   }));
 }
 
@@ -42,6 +46,31 @@ export function parsePublishedAt(item: Pick<ParsedItem, 'isoDate' | 'pubDate'>):
   return Number.isNaN(ms) ? null : ms;
 }
 
+/** Кап длины описания-кандидата: вход обогащения, не полный текст (копирайт). */
+export const MAX_DESCRIPTION_CHARS = 1000;
+
+/** Снимает HTML-теги и схлопывает пробелы (фолбэк для content без сниппета). */
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/** Описание кандидата: contentSnippet, иначе content без тегов; усечён; пустое → null. */
+export function extractDescription(
+  item: Pick<ParsedItem, 'contentSnippet' | 'content'>,
+): string | null {
+  const snippet = item.contentSnippet?.trim();
+  const raw =
+    snippet !== undefined && snippet.length > 0
+      ? snippet
+      : item.content !== undefined
+        ? stripHtml(item.content)
+        : undefined;
+  if (raw === undefined) return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  return trimmed.length > MAX_DESCRIPTION_CHARS ? trimmed.slice(0, MAX_DESCRIPTION_CHARS) : trimmed;
+}
+
 /** Маппит item в кандидата. null, если нет заголовка или ссылки (без них кандидат бесполезен). */
 export function toCandidate(
   item: ParsedItem,
@@ -55,5 +84,6 @@ export function toCandidate(
     title: item.title,
     link: item.link,
     publishedAt: parsePublishedAt(item),
+    description: extractDescription(item),
   };
 }

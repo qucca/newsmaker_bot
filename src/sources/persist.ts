@@ -49,6 +49,7 @@ export function persistCandidates(
       title: c.title,
       publishedAt: c.publishedAt,
       fetchedAt: now(),
+      description: c.description,
     });
   }
 

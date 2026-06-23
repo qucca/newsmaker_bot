@@ -18,11 +18,12 @@ export interface ArticleInsert {
   title: string;
   publishedAt: number | null;
   fetchedAt: number; // epoch ms
+  description: string | null; // RSS-сниппет, вход обогащения T7
 }
 
 const INSERT_ARTICLE = `
-  INSERT INTO articles (canonical_url, source, feed_source_id, lang, title, published_at, fetched_at)
-  VALUES (@canonicalUrl, @source, @feedSourceId, @lang, @title, @publishedAt, @fetchedAt)
+  INSERT INTO articles (canonical_url, source, feed_source_id, lang, title, published_at, fetched_at, description)
+  VALUES (@canonicalUrl, @source, @feedSourceId, @lang, @title, @publishedAt, @fetchedAt, @description)
   ON CONFLICT (canonical_url) DO NOTHING`;
 
 /**
@@ -39,4 +40,79 @@ export function insertArticles(db: Database.Database, rows: ArticleInsert[]): { 
     return inserted;
   });
   return { inserted: run(rows) };
+}
+
+/** Кандидат, ещё не прошедший обогащение (вход T7). */
+export interface UnenrichedArticle {
+  id: number;
+  source: string;
+  lang: string | null;
+  title: string;
+  description: string | null;
+}
+
+const SELECT_UNENRICHED = `
+  SELECT id, source, lang, title, description
+  FROM articles
+  WHERE enriched_at IS NULL
+  ORDER BY id
+  LIMIT @limit`;
+
+/** Необогащённые кандидаты (partial-индекс idx_articles_unenriched), по id, с капом. */
+export function selectUnenriched(db: Database.Database, limit: number): UnenrichedArticle[] {
+  return db.prepare(SELECT_UNENRICHED).all({ limit }) as UnenrichedArticle[];
+}
+
+/** Результат обогащения одной статьи (для записи в articles). */
+export interface EnrichmentWrite {
+  id: number;
+  clusterKey: string;
+  entities: string[];
+  tags: string[];
+  quality: number;
+  isUrgent: boolean;
+  isMajor: boolean;
+  neutralFacts: string[];
+  enrichedAt: number; // epoch ms
+}
+
+const UPDATE_ENRICHMENT = `
+  UPDATE articles SET
+    enriched_at   = @enrichedAt,
+    cluster_key   = @clusterKey,
+    entities      = @entities,
+    tags          = @tags,
+    quality       = @quality,
+    is_urgent     = @isUrgent,
+    is_major      = @isMajor,
+    neutral_facts = @neutralFacts
+  WHERE id = @id`;
+
+/**
+ * Пишет результаты обогащения пачкой в одной транзакции. JSON-поля сериализуются,
+ * boolean → 0/1 (под CHECK-констрейнты). Возвращает число обновлённых строк.
+ */
+export function writeEnrichment(
+  db: Database.Database,
+  rows: EnrichmentWrite[],
+): { updated: number } {
+  const stmt = db.prepare(UPDATE_ENRICHMENT);
+  const run = db.transaction((batch: EnrichmentWrite[]): number => {
+    let updated = 0;
+    for (const r of batch) {
+      updated += stmt.run({
+        id: r.id,
+        enrichedAt: r.enrichedAt,
+        clusterKey: r.clusterKey,
+        entities: JSON.stringify(r.entities),
+        tags: JSON.stringify(r.tags),
+        quality: r.quality,
+        isUrgent: r.isUrgent ? 1 : 0,
+        isMajor: r.isMajor ? 1 : 0,
+        neutralFacts: JSON.stringify(r.neutralFacts),
+      }).changes;
+    }
+    return updated;
+  });
+  return { updated: run(rows) };
 }

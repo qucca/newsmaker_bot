@@ -27,6 +27,7 @@ function cand(over: Partial<RawCandidate> = {}): RawCandidate {
     title: 'Title',
     link: 'https://e.com/a',
     publishedAt: 1000,
+    description: null,
     ...over,
   };
 }

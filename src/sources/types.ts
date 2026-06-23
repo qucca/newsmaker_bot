@@ -25,4 +25,5 @@ export interface RawCandidate {
   title: string;
   link: string; // исходный URL (канонизация — T5)
   publishedAt: number | null; // epoch ms из фида; null если даты нет
+  description: string | null; // RSS-сниппет (вход обогащения T7); null если фид не дал
 }

@@ -2,7 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { runMigrations } from './migrate.js';
-import { insertArticles, type ArticleInsert } from './articles.js';
+import {
+  insertArticles,
+  selectUnenriched,
+  writeEnrichment,
+  type ArticleInsert,
+  type EnrichmentWrite,
+} from './articles.js';
 
 function memDb(): Database.Database {
   const db = new Database(':memory:');
@@ -20,6 +26,22 @@ function row(over: Partial<ArticleInsert> = {}): ArticleInsert {
     title: 'Title',
     publishedAt: 1000,
     fetchedAt: 2000,
+    description: null,
+    ...over,
+  };
+}
+
+function enrichRow(over: Partial<EnrichmentWrite> = {}): EnrichmentWrite {
+  return {
+    id: 0,
+    clusterKey: 'nato|ukraine',
+    entities: ['NATO', 'Ukraine'],
+    tags: ['world'],
+    quality: 75,
+    isUrgent: false,
+    isMajor: true,
+    neutralFacts: ['Fact one.', 'Fact two.'],
+    enrichedAt: 5000,
     ...over,
   };
 }
@@ -108,5 +130,63 @@ test('insertArticles: feed_source_id ссылается на реальный so
     .prepare(`SELECT feed_source_id FROM articles WHERE canonical_url = 'https://e.com/a'`)
     .get() as Record<string, unknown>;
   assert.equal(r.feed_source_id, sid);
+  db.close();
+});
+
+test('insertArticles: сохраняет description', () => {
+  const db = memDb();
+  insertArticles(db, [row({ canonicalUrl: 'https://e.com/a', description: 'snippet' })]);
+  const r = db
+    .prepare(`SELECT description FROM articles WHERE canonical_url = 'https://e.com/a'`)
+    .get() as Record<string, unknown>;
+  assert.equal(r.description, 'snippet');
+  db.close();
+});
+
+test('insertArticles: description=null сохраняется как NULL', () => {
+  const db = memDb();
+  insertArticles(db, [row({ canonicalUrl: 'https://e.com/b', description: null })]);
+  const r = db
+    .prepare(`SELECT description FROM articles WHERE canonical_url = 'https://e.com/b'`)
+    .get() as Record<string, unknown>;
+  assert.equal(r.description, null);
+  db.close();
+});
+
+test('selectUnenriched: возвращает только необогащённых, по id, с лимитом', () => {
+  const db = memDb();
+  insertArticles(db, [
+    row({ canonicalUrl: 'https://e.com/a', title: 'A' }),
+    row({ canonicalUrl: 'https://e.com/b', title: 'B' }),
+    row({ canonicalUrl: 'https://e.com/c', title: 'C' }),
+  ]);
+  const all = selectUnenriched(db, 10);
+  assert.equal(all.length, 3);
+  assert.equal(all[0].title, 'A');
+  const limited = selectUnenriched(db, 2);
+  assert.equal(limited.length, 2);
+  db.close();
+});
+
+test('writeEnrichment: пишет поля, ставит enriched_at и убирает из необогащённых', () => {
+  const db = memDb();
+  insertArticles(db, [row({ canonicalUrl: 'https://e.com/a', description: 'd' })]);
+  const id = selectUnenriched(db, 10)[0].id;
+  const res = writeEnrichment(db, [enrichRow({ id })]);
+  assert.equal(res.updated, 1);
+  const r = db
+    .prepare(
+      `SELECT enriched_at, cluster_key, entities, tags, quality, is_urgent, is_major, neutral_facts FROM articles WHERE id = ?`,
+    )
+    .get(id) as Record<string, unknown>;
+  assert.equal(r.enriched_at, 5000);
+  assert.equal(r.cluster_key, 'nato|ukraine');
+  assert.deepEqual(JSON.parse(r.entities as string), ['NATO', 'Ukraine']);
+  assert.deepEqual(JSON.parse(r.tags as string), ['world']);
+  assert.equal(r.quality, 75);
+  assert.equal(r.is_urgent, 0);
+  assert.equal(r.is_major, 1);
+  assert.deepEqual(JSON.parse(r.neutral_facts as string), ['Fact one.', 'Fact two.']);
+  assert.equal(selectUnenriched(db, 10).length, 0); // больше не необогащён
   db.close();
 });
