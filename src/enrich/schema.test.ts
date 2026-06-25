@@ -6,7 +6,7 @@ function item(over: Record<string, unknown> = {}) {
   return {
     ref: 0,
     entities: ['NATO'],
-    tags: ['world'],
+    tags: ['football'],
     quality: 80,
     is_urgent: false,
     is_major: true,

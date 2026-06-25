@@ -25,3 +25,14 @@ test('parseConfig: кластеризация — значения из env ко
   assert.equal(cfg.CLUSTER_WINDOW_HOURS, 48);
   assert.equal(cfg.CLUSTER_RUN_CAP, 100);
 });
+
+test('MAX_USERS: дефолт 100', () => {
+  const c = parseConfig({ TELEGRAM_BOT_TOKEN: 't' });
+  assert.equal(c.MAX_USERS, 100);
+});
+
+test('MAX_USERS: коэрсится из строки и должен быть положительным', () => {
+  const c = parseConfig({ TELEGRAM_BOT_TOKEN: 't', MAX_USERS: '5' });
+  assert.equal(c.MAX_USERS, 5);
+  assert.throws(() => parseConfig({ TELEGRAM_BOT_TOKEN: 't', MAX_USERS: '0' }));
+});

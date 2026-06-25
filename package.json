@@ -21,6 +21,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/luxon": "^3.7.2",
     "@types/node": "^26.0.0",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
@@ -32,7 +33,10 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
     "@google/genai": "^2.9.0",
+    "@grammyjs/auto-retry": "^2.0.2",
     "better-sqlite3": "^12.11.1",
+    "grammy": "^1.44.0",
+    "luxon": "^3.7.2",
     "openai": "^6.44.0",
     "rss-parser": "^3.13.0",
     "zod": "^4.4.3"

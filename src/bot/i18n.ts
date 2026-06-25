@@ -1,0 +1,196 @@
+import type { Lang } from '../langs.js';
+import type { Category } from '../categories.js';
+
+// UI-строки бота (ru/en). Ключи — стабильные идентификаторы; интерполяция {name}.
+// Подписи листьев/групп категорий — по slug. Полнота гарантируется тестом.
+
+export const MSG_KEYS = [
+  'onb_greeting', 'onb_ask_lang', 'onb_ask_interests', 'onb_need_one_tag',
+  'onb_ask_profile', 'onb_btn_skip', 'onb_ask_tz', 'onb_btn_tz_other',
+  'onb_tz_ask_input', 'onb_tz_bad_input', 'onb_ask_windows', 'onb_need_one_window',
+  'onb_ask_volume', 'onb_btn_done', 'onb_btn_select_group', 'onb_btn_prev',
+  'onb_btn_next', 'onb_summary_title', 'onb_summary_tail', 'onb_already_set',
+  'onb_summary_lang', 'onb_summary_interests', 'onb_summary_tz', 'onb_summary_windows',
+  'onb_summary_volume',
+  'onb_btn_open_settings', 'cap_reached', 'rate_limited',
+  'settings_title', 'settings_saved', 'settings_btn_lang', 'settings_btn_interests',
+  'settings_btn_profile', 'settings_btn_tz', 'settings_btn_windows', 'settings_btn_volume',
+  'delete_confirm', 'delete_btn_yes', 'delete_btn_no', 'delete_done', 'delete_cancelled',
+  'win_morning', 'win_day', 'win_evening', 'win_night',
+] as const;
+
+export type MsgKey = (typeof MSG_KEYS)[number];
+
+const MESSAGES: Record<Lang, Record<MsgKey, string>> = {
+  ru: {
+    onb_greeting: '👋 Привет! Я присылаю подборку новостей под твои интересы. Настроим за минуту.',
+    onb_ask_lang: 'На каком языке присылать новости?',
+    onb_ask_interests: 'Выбери интересы (можно несколько). Группа: {group}',
+    onb_need_one_tag: 'Выбери хотя бы одну тему 🙂',
+    onb_ask_profile: 'Хочешь — допиши интересы словами: любимые темы, люди, компании. Или пропусти.',
+    onb_btn_skip: '⏭ Пропустить',
+    onb_ask_tz: 'Твой часовой пояс? По нему считаю окна чтения.',
+    onb_btn_tz_other: '✏️ Другой',
+    onb_tz_ask_input: 'Пришли название часового пояса в формате IANA, например Asia/Tokyo.',
+    onb_tz_bad_input: 'Не узнал такой часовой пояс. Пример: Europe/Moscow. Попробуй ещё раз.',
+    onb_ask_windows: 'Когда присылать? Выбери окна (1–4).',
+    onb_need_one_window: 'Выбери хотя бы одно окно 🙂',
+    onb_ask_volume: 'Сколько новостей за раз?',
+    onb_btn_done: '✓ Готово',
+    onb_btn_select_group: '✅ Выбрать всю группу',
+    onb_btn_prev: '◀ Назад',
+    onb_btn_next: 'Вперёд ▶',
+    onb_summary_title: 'Готово! ✅ Профиль сохранён:',
+    onb_summary_lang: 'Язык',
+    onb_summary_interests: 'Интересы',
+    onb_summary_tz: 'Часовой пояс',
+    onb_summary_windows: 'Окна чтения',
+    onb_summary_volume: 'Объём',
+    onb_summary_tail: 'Первую подборку пришлю в ближайшее окно чтения. Изменить всё можно в /settings.',
+    onb_already_set: 'Ты уже настроен. Изменить параметры можно в настройках.',
+    onb_btn_open_settings: '⚙️ Открыть настройки',
+    cap_reached: 'Извини, регистрация временно закрыта — слишком много пользователей. Загляни позже.',
+    rate_limited: 'Секунду 🙂',
+    settings_title: '⚙️ Настройки. Что изменить?',
+    settings_saved: 'Сохранил ✅',
+    settings_btn_lang: '🌐 Язык',
+    settings_btn_interests: '🎯 Интересы',
+    settings_btn_profile: '✍️ Описание',
+    settings_btn_tz: '🕐 Часовой пояс',
+    settings_btn_windows: '⏰ Окна чтения',
+    settings_btn_volume: '🔢 Объём',
+    delete_confirm: '⚠️ Удалить твой профиль и все данные безвозвратно?',
+    delete_btn_yes: '🗑 Да, удалить всё',
+    delete_btn_no: 'Отмена',
+    delete_done: 'Профиль и данные удалены. Возвращайся через /start в любой момент.',
+    delete_cancelled: 'Отменено.',
+    win_morning: '🌅 Утро 08:00',
+    win_day: '☀️ День 13:00',
+    win_evening: '🌆 Вечер 19:00',
+    win_night: '🌙 Ночь 22:00',
+  },
+  en: {
+    onb_greeting: '👋 Hi! I send you a news digest tailored to your interests. Let’s set it up in a minute.',
+    onb_ask_lang: 'Which language should the news be in?',
+    onb_ask_interests: 'Pick your interests (multiple allowed). Group: {group}',
+    onb_need_one_tag: 'Pick at least one topic 🙂',
+    onb_ask_profile: 'Optionally describe interests in your own words: topics, people, companies. Or skip.',
+    onb_btn_skip: '⏭ Skip',
+    onb_ask_tz: 'Your time zone? I use it to compute reading windows.',
+    onb_btn_tz_other: '✏️ Other',
+    onb_tz_ask_input: 'Send an IANA time zone name, e.g. Asia/Tokyo.',
+    onb_tz_bad_input: 'I didn’t recognize that zone. Example: Europe/London. Try again.',
+    onb_ask_windows: 'When should I send? Pick windows (1–4).',
+    onb_need_one_window: 'Pick at least one window 🙂',
+    onb_ask_volume: 'How many stories at a time?',
+    onb_btn_done: '✓ Done',
+    onb_btn_select_group: '✅ Select whole group',
+    onb_btn_prev: '◀ Back',
+    onb_btn_next: 'Next ▶',
+    onb_summary_title: 'All set! ✅ Profile saved:',
+    onb_summary_lang: 'Language',
+    onb_summary_interests: 'Interests',
+    onb_summary_tz: 'Time zone',
+    onb_summary_windows: 'Reading windows',
+    onb_summary_volume: 'Volume',
+    onb_summary_tail: 'I’ll send the first digest in your next reading window. Change anything in /settings.',
+    onb_already_set: 'You’re already set up. You can change settings any time.',
+    onb_btn_open_settings: '⚙️ Open settings',
+    cap_reached: 'Sorry, registration is temporarily closed — too many users. Check back later.',
+    rate_limited: 'One sec 🙂',
+    settings_title: '⚙️ Settings. What to change?',
+    settings_saved: 'Saved ✅',
+    settings_btn_lang: '🌐 Language',
+    settings_btn_interests: '🎯 Interests',
+    settings_btn_profile: '✍️ Description',
+    settings_btn_tz: '🕐 Time zone',
+    settings_btn_windows: '⏰ Reading windows',
+    settings_btn_volume: '🔢 Volume',
+    delete_confirm: '⚠️ Delete your profile and all data permanently?',
+    delete_btn_yes: '🗑 Yes, delete everything',
+    delete_btn_no: 'Cancel',
+    delete_done: 'Profile and data deleted. Come back any time via /start.',
+    delete_cancelled: 'Cancelled.',
+    win_morning: '🌅 Morning 08:00',
+    win_day: '☀️ Day 13:00',
+    win_evening: '🌆 Evening 19:00',
+    win_night: '🌙 Night 22:00',
+  },
+};
+
+const CATEGORY_LABELS: Record<Category, { ru: string; en: string }> = {
+  world_geopolitics: { ru: 'Геополитика', en: 'Geopolitics' },
+  domestic_politics: { ru: 'Внутр. политика', en: 'Domestic politics' },
+  war_conflict: { ru: 'Войны и конфликты', en: 'War & conflict' },
+  world_other: { ru: 'Мир: прочее', en: 'World: other' },
+  markets_finance: { ru: 'Рынки и финансы', en: 'Markets & finance' },
+  economy_macro: { ru: 'Экономика', en: 'Economy' },
+  companies_corporate: { ru: 'Компании', en: 'Companies' },
+  crypto: { ru: 'Крипто', en: 'Crypto' },
+  business_other: { ru: 'Бизнес: прочее', en: 'Business: other' },
+  ai: { ru: 'ИИ', en: 'AI' },
+  consumer_tech: { ru: 'Гаджеты', en: 'Consumer tech' },
+  software_internet: { ru: 'Софт и интернет', en: 'Software & internet' },
+  cybersecurity: { ru: 'Кибербез', en: 'Cybersecurity' },
+  startups: { ru: 'Стартапы', en: 'Startups' },
+  tech_other: { ru: 'Технологии: прочее', en: 'Tech: other' },
+  space: { ru: 'Космос', en: 'Space' },
+  scientific_research: { ru: 'Исследования', en: 'Research' },
+  science_other: { ru: 'Наука: прочее', en: 'Science: other' },
+  medicine_health: { ru: 'Медицина', en: 'Medicine' },
+  mental_health: { ru: 'Псих. здоровье', en: 'Mental health' },
+  fitness_nutrition: { ru: 'Фитнес и питание', en: 'Fitness & nutrition' },
+  health_other: { ru: 'Здоровье: прочее', en: 'Health: other' },
+  football: { ru: 'Футбол', en: 'Football' },
+  basketball: { ru: 'Баскетбол', en: 'Basketball' },
+  tennis: { ru: 'Теннис', en: 'Tennis' },
+  motorsport: { ru: 'Автоспорт', en: 'Motorsport' },
+  combat_sports: { ru: 'Единоборства', en: 'Combat sports' },
+  sports_other: { ru: 'Спорт: прочее', en: 'Sports: other' },
+  movies_tv: { ru: 'Кино и сериалы', en: 'Movies & TV' },
+  music: { ru: 'Музыка', en: 'Music' },
+  gaming: { ru: 'Игры', en: 'Gaming' },
+  books: { ru: 'Книги', en: 'Books' },
+  art_culture: { ru: 'Искусство', en: 'Art & culture' },
+  celebrities: { ru: 'Знаменитости', en: 'Celebrities' },
+  entertainment_other: { ru: 'Развлечения: прочее', en: 'Entertainment: other' },
+  climate: { ru: 'Климат', en: 'Climate' },
+  energy: { ru: 'Энергетика', en: 'Energy' },
+  nature_wildlife: { ru: 'Природа', en: 'Nature & wildlife' },
+  environment_other: { ru: 'Экология: прочее', en: 'Environment: other' },
+  education: { ru: 'Образование', en: 'Education' },
+  religion: { ru: 'Религия', en: 'Religion' },
+  migration: { ru: 'Миграция', en: 'Migration' },
+  crime_justice: { ru: 'Криминал и право', en: 'Crime & justice' },
+  lifestyle: { ru: 'Лайфстайл', en: 'Lifestyle' },
+  society_other: { ru: 'Общество: прочее', en: 'Society: other' },
+};
+
+const GROUP_LABELS: Record<string, { ru: string; en: string }> = {
+  politics_world: { ru: 'Политика и мир', en: 'Politics & world' },
+  business_economy: { ru: 'Бизнес и экономика', en: 'Business & economy' },
+  technology: { ru: 'Технологии', en: 'Technology' },
+  science: { ru: 'Наука', en: 'Science' },
+  health: { ru: 'Здоровье', en: 'Health' },
+  sports: { ru: 'Спорт', en: 'Sports' },
+  culture_entertainment: { ru: 'Культура и развлечения', en: 'Culture & entertainment' },
+  environment: { ru: 'Экология', en: 'Environment' },
+  society: { ru: 'Общество', en: 'Society' },
+};
+
+/** Локализованная строка по ключу с подстановкой {param}. */
+export function t(lang: Lang, key: MsgKey, params?: Record<string, string | number>): string {
+  let s = MESSAGES[lang][key];
+  if (params !== undefined) {
+    for (const [k, v] of Object.entries(params)) s = s.replaceAll(`{${k}}`, String(v));
+  }
+  return s;
+}
+
+export function categoryLabel(lang: Lang, slug: Category): string {
+  return CATEGORY_LABELS[slug][lang];
+}
+
+export function groupLabel(lang: Lang, group: string): string {
+  return GROUP_LABELS[group]?.[lang] ?? group;
+}

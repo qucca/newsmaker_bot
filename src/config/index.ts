@@ -22,6 +22,8 @@ const EnvSchema = z.object({
   // Кластеризация (T8): окно матчинга (часы, от first_seen) и кап статей за прогон.
   CLUSTER_WINDOW_HOURS: z.coerce.number().int().positive().default(72),
   CLUSTER_RUN_CAP: z.coerce.number().int().positive().default(500),
+  // Онбординг (T9): кап на число активных юзеров (предохранитель публичной регистрации).
+  MAX_USERS: z.coerce.number().int().positive().default(100),
 });
 
 export type Config = Readonly<z.infer<typeof EnvSchema>>;

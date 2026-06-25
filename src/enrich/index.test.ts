@@ -36,7 +36,7 @@ function okItem(ref: number) {
   return {
     ref,
     entities: ['NATO', 'Ukraine'],
-    tags: ['world'],
+    tags: ['world_geopolitics'],
     quality: 70,
     is_urgent: false,
     is_major: true,
