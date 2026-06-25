@@ -24,6 +24,8 @@ const EnvSchema = z.object({
   CLUSTER_RUN_CAP: z.coerce.number().int().positive().default(500),
   // Онбординг (T9): кап на число активных юзеров (предохранитель публичной регистрации).
   MAX_USERS: z.coerce.number().int().positive().default(100),
+  // Ранжирование (T10): окно свежести кандидатов-кластеров в часах (по updated_at).
+  SCORE_WINDOW_HOURS: z.coerce.number().int().positive().default(72),
 });
 
 export type Config = Readonly<z.infer<typeof EnvSchema>>;
