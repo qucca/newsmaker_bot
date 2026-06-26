@@ -143,3 +143,22 @@ const ASSIGN_CLUSTER = `UPDATE articles SET cluster_id = @clusterId WHERE id = @
 export function assignCluster(db: Database.Database, id: number, clusterId: number): void {
   db.prepare(ASSIGN_CLUSTER).run({ id, clusterId });
 }
+
+/** Представитель кластера для ссылки в карточке (T12). */
+export interface RepresentativeRow {
+  url: string; // canonical_url
+  source: string; // хост издания (без www), напр. "techcrunch.com"
+}
+
+const SELECT_REPRESENTATIVE = `
+  SELECT canonical_url AS url, source
+  FROM articles
+  WHERE id = ?`;
+
+/** URL и источник статьи-представителя по её id; undefined если строки нет. */
+export function selectRepresentative(
+  db: Database.Database,
+  articleId: number,
+): RepresentativeRow | undefined {
+  return db.prepare(SELECT_REPRESENTATIVE).get(articleId) as RepresentativeRow | undefined;
+}

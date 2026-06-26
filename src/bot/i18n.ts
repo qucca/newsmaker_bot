@@ -17,6 +17,7 @@ export const MSG_KEYS = [
   'settings_btn_profile', 'settings_btn_tz', 'settings_btn_windows', 'settings_btn_volume',
   'delete_confirm', 'delete_btn_yes', 'delete_btn_no', 'delete_done', 'delete_cancelled',
   'win_morning', 'win_day', 'win_evening', 'win_night',
+  'card_read_at', 'card_why',
 ] as const;
 
 export type MsgKey = (typeof MSG_KEYS)[number];
@@ -68,6 +69,8 @@ const MESSAGES: Record<Lang, Record<MsgKey, string>> = {
     win_day: '☀️ День 13:00',
     win_evening: '🌆 Вечер 19:00',
     win_night: '🌙 Ночь 22:00',
+    card_read_at: 'Читать в {source}',
+    card_why: 'Почему ты это видишь: {tags}',
   },
   en: {
     onb_greeting: '👋 Hi! I send you a news digest tailored to your interests. Let’s set it up in a minute.',
@@ -115,6 +118,8 @@ const MESSAGES: Record<Lang, Record<MsgKey, string>> = {
     win_day: '☀️ Day 13:00',
     win_evening: '🌆 Evening 19:00',
     win_night: '🌙 Night 22:00',
+    card_read_at: 'Read on {source}',
+    card_why: 'Why you see this: {tags}',
   },
 };
 

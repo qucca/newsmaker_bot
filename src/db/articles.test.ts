@@ -8,6 +8,7 @@ import {
   writeEnrichment,
   selectUnclustered,
   assignCluster,
+  selectRepresentative,
   type ArticleInsert,
   type EnrichmentWrite,
 } from './articles.js';
@@ -219,5 +220,26 @@ test('assignCluster: проставляет cluster_id и убирает из н
   assert.equal(selectUnclustered(db, 10).length, 0);
   const r = db.prepare(`SELECT cluster_id FROM articles WHERE id = ?`).get(id) as Record<string, unknown>;
   assert.equal(r.cluster_id, cid);
+  db.close();
+});
+
+test('selectRepresentative: маппит canonical_url→url и source', () => {
+  const db = memDb();
+  insertArticles(db, [
+    row({ canonicalUrl: 'https://techcrunch.com/x', source: 'techcrunch.com' }),
+  ]);
+  const r = db
+    .prepare(`SELECT id FROM articles WHERE canonical_url = ?`)
+    .get('https://techcrunch.com/x') as { id: number };
+  assert.deepEqual(selectRepresentative(db, r.id), {
+    url: 'https://techcrunch.com/x',
+    source: 'techcrunch.com',
+  });
+  db.close();
+});
+
+test('selectRepresentative: undefined когда строки нет', () => {
+  const db = memDb();
+  assert.equal(selectRepresentative(db, 999), undefined);
   db.close();
 });
