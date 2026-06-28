@@ -94,3 +94,15 @@ export function updateClusterAggregate(
 ): void {
   db.prepare(UPDATE_CLUSTER).run({ clusterId, ...agg });
 }
+
+const SELECT_REP_SOURCE = `
+  SELECT a.source AS source
+  FROM clusters c
+  JOIN articles a ON a.id = c.rep_article_id
+  WHERE c.id = ?`;
+
+/** Издание представителя кластера (что юзер видел в карточке). undefined если нет представителя. */
+export function getClusterRepSource(db: Database.Database, clusterId: number): string | undefined {
+  const row = db.prepare(SELECT_REP_SOURCE).get(clusterId) as { source: string } | undefined;
+  return row?.source;
+}

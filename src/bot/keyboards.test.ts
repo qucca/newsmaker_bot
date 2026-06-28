@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { langKb, interestsKb, volumeKb, tzKb } from './keyboards.js';
+import { langKb, interestsKb, volumeKb, tzKb, feedbackKb } from './keyboards.js';
 
 function allCb(kb: { inline_keyboard: { callback_data?: string }[][] }): string[] {
   return kb.inline_keyboard.flat().map((b) => b.callback_data ?? '');
@@ -29,4 +29,29 @@ test('tzKb: содержит пресет и кнопку Другой', () => {
   const cb = allCb(tzKb('ru'));
   assert.ok(cb.includes('ob~tz~Europe/Moscow'));
   assert.ok(cb.includes('ob~tz~other'));
+});
+
+function allText(kb: { inline_keyboard: { text: string }[][] }): string[] {
+  return kb.inline_keyboard.flat().map((b) => b.text);
+}
+
+test('feedbackKb: 👍/👎 с callback_data fb~up~id / fb~down~id', () => {
+  const cb = allCb(feedbackKb(42));
+  assert.deepEqual(cb, ['fb~up~42', 'fb~down~42']);
+});
+
+test('feedbackKb: без голоса — обе кнопки без отметки', () => {
+  const txt = allText(feedbackKb(1));
+  assert.ok(!txt[0].includes('✓'));
+  assert.ok(!txt[1].includes('✓'));
+});
+
+test('feedbackKb: отмечает выбранный голос ✓', () => {
+  const up = allText(feedbackKb(7, 1));
+  assert.ok(up[0].includes('✓'));
+  assert.ok(!up[1].includes('✓'));
+
+  const down = allText(feedbackKb(7, -1));
+  assert.ok(!down[0].includes('✓'));
+  assert.ok(down[1].includes('✓'));
 });

@@ -18,3 +18,10 @@ export function insertSent(
 ): void {
   db.prepare(INSERT_SENT).run(chatId, clusterId, kind, sentAt);
 }
+
+const COUNT_SENT = `SELECT COUNT(*) AS n FROM sent_log WHERE chat_id = ?`;
+
+/** Сколько кластеров всего отправлено юзеру (гейт калибровки кнопок фидбэка, T14). */
+export function countSentCards(db: Database.Database, chatId: number): number {
+  return (db.prepare(COUNT_SENT).get(chatId) as { n: number }).n;
+}

@@ -18,6 +18,7 @@ export const MSG_KEYS = [
   'delete_confirm', 'delete_btn_yes', 'delete_btn_no', 'delete_done', 'delete_cancelled',
   'win_morning', 'win_day', 'win_evening', 'win_night',
   'card_read_at', 'card_why',
+  'fb_thanks', 'fb_stale',
 ] as const;
 
 export type MsgKey = (typeof MSG_KEYS)[number];
@@ -71,6 +72,8 @@ const MESSAGES: Record<Lang, Record<MsgKey, string>> = {
     win_night: '🌙 Ночь 22:00',
     card_read_at: 'Читать в {source}',
     card_why: 'Почему ты это видишь: {tags}',
+    fb_thanks: 'Спасибо за отзыв!',
+    fb_stale: 'Эта новость уже недоступна.',
   },
   en: {
     onb_greeting: '👋 Hi! I send you a news digest tailored to your interests. Let’s set it up in a minute.',
@@ -120,6 +123,8 @@ const MESSAGES: Record<Lang, Record<MsgKey, string>> = {
     win_night: '🌙 Night 22:00',
     card_read_at: 'Read on {source}',
     card_why: 'Why you see this: {tags}',
+    fb_thanks: 'Thanks for your feedback!',
+    fb_stale: 'This item is no longer available.',
   },
 };
 

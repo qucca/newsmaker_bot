@@ -4,6 +4,7 @@ import { createSessionStore } from './session.js';
 import { createStartLimiter, START_COOLDOWN_MS } from './safeguard.js';
 import { registerCommands, setBotCommands } from './commands.js';
 import { registerSettings } from './settings.js';
+import { registerFeedback } from './feedback.js';
 import { registerOnboarding, type BotDeps } from './onboarding/handler.js';
 import type { Wizard } from './wizard.js';
 
@@ -26,6 +27,8 @@ export function createBot(token: string, deps: BotDeps, maxUsers: number): Bot {
   registerCommands(bot, store, deps, { maxUsers, limiter });
   registerOnboarding(bot, store, deps);
   registerSettings(bot, store, deps);
+  // Кнопки 👍/👎 (T14): префикс fb~ независим от ob~/set~/del~, порядок регистрации не важен.
+  registerFeedback(bot, deps);
 
   bot.catch((err) => {
     // Структурный лог без секретов/PII: только тип ошибки.

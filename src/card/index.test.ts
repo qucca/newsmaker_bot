@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { runMigrations } from '../db/migrate.js';
 import { insertArticles } from '../db/articles.js';
 import { upsertSummary } from '../db/summaries.js';
+import { insertSent } from '../db/sent_log.js';
 import { buildUserCards } from './index.js';
 import type { UserRow } from '../db/users.js';
 import type { ScoredCluster } from '../score/rank.js';
@@ -129,6 +130,36 @@ test('buildUserCards: skip когда представитель не найде
     logger: silent,
   });
   assert.equal(cards.length, 0);
+  db.close();
+});
+
+test('buildUserCards: в окне калибровки (count < лимит) — кнопки фидбэка есть', () => {
+  const db = memDb();
+  const cid = seedCluster(db);
+  const aid = seedArticle(db, 'https://a.com/x', 'a.com');
+  seedSummary(db, cid, 'T');
+  const cards = buildUserCards(db, user(), [scored({ clusterId: cid, repArticleId: aid })], {
+    logger: silent,
+  });
+  assert.ok(cards[0].message.replyMarkup !== undefined);
+  db.close();
+});
+
+test('buildUserCards: после калибровки (count >= лимит) — кнопок нет', () => {
+  const db = memDb();
+  const cid = seedCluster(db);
+  const aid = seedArticle(db, 'https://a.com/x', 'a.com');
+  seedSummary(db, cid, 'T');
+  db.prepare(
+    `INSERT INTO users (chat_id, lang, tz, max_items_per_send, created_at, updated_at)
+     VALUES (1, 'ru', 'UTC', 5, 0, 0)`,
+  ).run();
+  insertSent(db, 1, cid, 'digest', 1); // 1 уже отправленный кластер
+  const cards = buildUserCards(db, user({ chatId: 1 }), [scored({ clusterId: cid, repArticleId: aid })], {
+    logger: silent,
+    calibrationCards: 1, // count(1) >= лимит(1) → калибровка пройдена
+  });
+  assert.equal(cards[0].message.replyMarkup, undefined);
   db.close();
 });
 

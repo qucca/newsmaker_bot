@@ -1,6 +1,8 @@
+import type { InlineKeyboard } from 'grammy';
 import type { Lang } from '../langs.js';
 import type { Category } from '../categories.js';
 import { t, categoryLabel } from '../bot/i18n.js';
+import { feedbackKb } from '../bot/keyboards.js';
 
 // T12: чистая детерминированная сборка HTML-карточки. Без БД и без IO.
 // parse_mode HTML — экранируем только & < > (в href ещё "). Эмодзи — литералы шаблона.
@@ -10,6 +12,8 @@ const TAG_SEP = ' · ';
 const DISABLE_WEB_PAGE_PREVIEW = false; // превью оригинала включено (spec §4)
 
 export interface CardInput {
+  clusterId: number; // для callback_data кнопок фидбэка (голос на уровне истории)
+  withFeedback: boolean; // вешать ли кнопки 👍/👎 (гейт калибровки — решает src/card/index.ts)
   title: string; // summaries.title (провалидировано в T11)
   summary: string; // summaries.summary
   url: string; // canonical_url представителя
@@ -22,6 +26,7 @@ export interface CardMessage {
   text: string; // готовый HTML
   parseMode: 'HTML';
   disableWebPagePreview: boolean;
+  replyMarkup?: InlineKeyboard; // кнопки 👍/👎 (только в окне калибровки); иначе undefined
 }
 
 /** Экранирует текст под Telegram HTML parse_mode. */
@@ -55,5 +60,6 @@ export function composeCard(input: CardInput): CardMessage {
     text: lines.join('\n'),
     parseMode: 'HTML',
     disableWebPagePreview: DISABLE_WEB_PAGE_PREVIEW,
+    replyMarkup: input.withFeedback ? feedbackKb(input.clusterId) : undefined,
   };
 }

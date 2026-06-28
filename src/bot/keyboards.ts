@@ -93,3 +93,15 @@ export function confirmDeleteKb(lang: Lang): InlineKeyboard {
 export function openSettingsKb(lang: Lang): InlineKeyboard {
   return new InlineKeyboard().text(t(lang, 'onb_btn_open_settings'), encodeCb(['set', 'open']));
 }
+
+// Кнопки фидбэка 👍/👎 на карточке (T14). callback_data несёт cluster_id (голос на уровне
+// истории). Эмодзи — язык-независимы; выбранный голос помечается ✓. vote — текущий голос юзера
+// (для перерисовки после переголоса), undefined на свежей карточке.
+export function feedbackKb(clusterId: number, vote?: 1 | -1): InlineKeyboard {
+  const up = vote === 1 ? '👍 ✓' : '👍';
+  const down = vote === -1 ? '👎 ✓' : '👎';
+  const id = String(clusterId);
+  return new InlineKeyboard()
+    .text(up, encodeCb(['fb', 'up', id]))
+    .text(down, encodeCb(['fb', 'down', id]));
+}

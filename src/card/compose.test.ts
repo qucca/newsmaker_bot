@@ -4,6 +4,8 @@ import { composeCard, type CardInput } from './compose.js';
 
 function input(over: Partial<CardInput> = {}): CardInput {
   return {
+    clusterId: 1,
+    withFeedback: false,
     title: 'OpenAI ships model',
     summary: 'A neutral summary.',
     url: 'https://techcrunch.com/x',
@@ -12,6 +14,10 @@ function input(over: Partial<CardInput> = {}): CardInput {
     lang: 'ru',
     ...over,
   };
+}
+
+function cbData(card: { replyMarkup?: { inline_keyboard: { callback_data?: string }[][] } }): string[] {
+  return (card.replyMarkup?.inline_keyboard ?? []).flat().map((b) => b.callback_data ?? '');
 }
 
 test('composeCard: точная структура строк (ru)', () => {
@@ -61,4 +67,14 @@ test('composeCard: parseMode HTML, превью включено', () => {
 test('composeCard: пустой whyTags — строки «почему» нет', () => {
   const card = composeCard(input({ whyTags: [] }));
   assert.doesNotMatch(card.text, /🔎/);
+});
+
+test('composeCard: withFeedback=true — кнопки 👍/👎 с cluster_id в callback', () => {
+  const card = composeCard(input({ clusterId: 77, withFeedback: true }));
+  assert.deepEqual(cbData(card), ['fb~up~77', 'fb~down~77']);
+});
+
+test('composeCard: withFeedback=false — клавиатуры нет', () => {
+  const card = composeCard(input({ withFeedback: false }));
+  assert.equal(card.replyMarkup, undefined);
 });

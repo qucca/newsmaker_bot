@@ -7,6 +7,7 @@ import {
   createCluster,
   selectClusterMembers,
   updateClusterAggregate,
+  getClusterRepSource,
 } from './clusters.js';
 
 function memDb(): Database.Database {
@@ -109,5 +110,21 @@ test('updateClusterAggregate: перезаписывает агрегатные 
   assert.equal(r.rep_article_id, aid);
   assert.equal(r.first_seen, 500);
   assert.equal(r.content_hash, 'deadbeef');
+  db.close();
+});
+
+test('getClusterRepSource: источник представителя кластера', () => {
+  const db = memDb();
+  const cid = createCluster(db, 'k', 1000);
+  const aid = seedMember(db, cid, { source: 'reuters.com' });
+  db.prepare(`UPDATE clusters SET rep_article_id = ? WHERE id = ?`).run(aid, cid);
+  assert.equal(getClusterRepSource(db, cid), 'reuters.com');
+  db.close();
+});
+
+test('getClusterRepSource: нет представителя → undefined', () => {
+  const db = memDb();
+  const cid = createCluster(db, 'k', 1000);
+  assert.equal(getClusterRepSource(db, cid), undefined);
   db.close();
 });
