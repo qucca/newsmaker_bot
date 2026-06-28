@@ -78,22 +78,7 @@ export function createUser(db: Database.Database, u: NewUser, now: number): void
 export function getUser(db: Database.Database, chatId: number): UserRow | undefined {
   const raw = db.prepare(SELECT_BY_ID).get(chatId) as RawRow | undefined;
   if (raw === undefined) return undefined;
-  const tags = (JSON.parse(raw.interest_tags) as unknown[]).filter(
-    (x): x is Category => typeof x === 'string' && CATEGORY_SET.has(x),
-  );
-  return {
-    chatId: raw.chat_id,
-    lang: raw.lang as Lang,
-    tz: raw.tz,
-    interestTags: tags,
-    profileText: raw.profile_text,
-    readingWindows: JSON.parse(raw.reading_windows) as string[],
-    maxItemsPerSend: raw.max_items_per_send,
-    active: raw.active,
-    lastSentAt: raw.last_sent_at,
-    createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
-  };
+  return toUserRow(raw);
 }
 
 /** Патчит только переданные поля + updated_at. Пустой патч обновляет только updated_at. */
@@ -151,4 +136,40 @@ export function countActiveUsers(db: Database.Database): number {
 /** Деактивирует юзера (active=0) — при 403 от Telegram (бот заблокирован/юзер удалён). */
 export function setUserInactive(db: Database.Database, chatId: number, now: number): void {
   db.prepare(`UPDATE users SET active = 0, updated_at = ? WHERE chat_id = ?`).run(now, chatId);
+}
+
+/** Переводит сырую строку в UserRow (мягкое чтение тегов — как в getUser). */
+function toUserRow(raw: RawRow): UserRow {
+  const tags = (JSON.parse(raw.interest_tags) as unknown[]).filter(
+    (x): x is Category => typeof x === 'string' && CATEGORY_SET.has(x),
+  );
+  return {
+    chatId: raw.chat_id,
+    lang: raw.lang as Lang,
+    tz: raw.tz,
+    interestTags: tags,
+    profileText: raw.profile_text,
+    readingWindows: JSON.parse(raw.reading_windows) as string[],
+    maxItemsPerSend: raw.max_items_per_send,
+    active: raw.active,
+    lastSentAt: raw.last_sent_at,
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+  };
+}
+
+/** Все активные юзеры (active=1) — вход тика планировщика (T15). Порядок по chat_id. */
+export function selectActiveUsers(db: Database.Database): UserRow[] {
+  const rows = db
+    .prepare(`SELECT * FROM users WHERE active = 1 ORDER BY chat_id`)
+    .all() as RawRow[];
+  return rows.map(toUserRow);
+}
+
+/**
+ * Двигает last_sent_at (epoch ms) — «окно обслужено» (T15). updated_at НЕ трогаем:
+ * это состояние расписания, а не правка профиля (updated_at отражает изменения профиля).
+ */
+export function setLastSent(db: Database.Database, chatId: number, ts: number): void {
+  db.prepare(`UPDATE users SET last_sent_at = ? WHERE chat_id = ?`).run(ts, chatId);
 }

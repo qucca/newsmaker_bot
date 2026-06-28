@@ -9,6 +9,8 @@ import {
   deleteUser,
   countActiveUsers,
   setUserInactive,
+  selectActiveUsers,
+  setLastSent,
   type NewUser,
 } from './users.js';
 
@@ -96,8 +98,7 @@ test('deleteUser удаляет строку (+CASCADE feedback)', () => {
   deleteUser(db, 42);
   assert.equal(getUser(db, 42), undefined);
   assert.equal(
-    (db.prepare(`SELECT COUNT(*) AS n FROM feedback WHERE chat_id = 42`).get() as { n: number })
-      .n,
+    (db.prepare(`SELECT COUNT(*) AS n FROM feedback WHERE chat_id = 42`).get() as { n: number }).n,
     0,
   );
   db.close();
@@ -124,5 +125,42 @@ test('setUserInactive: ставит active=0 и обновляет updated_at', 
   const u = getUser(db, 7);
   assert.equal(u?.active, 0);
   assert.equal(u?.updatedAt, 5000);
+  db.close();
+});
+
+test('selectActiveUsers: только active=1, с теми же полями, что getUser', () => {
+  const db = memDb();
+  createUser(db, base, 1000); // chat 42, active
+  createUser(db, { ...base, chatId: 43 }, 1000);
+  createUser(db, { ...base, chatId: 44 }, 1000);
+  db.prepare(`UPDATE users SET active = 0 WHERE chat_id = 43`).run();
+
+  const users = selectActiveUsers(db);
+  assert.deepEqual(
+    users.map((u) => u.chatId).sort((a, b) => a - b),
+    [42, 44],
+  );
+  const u42 = users.find((u) => u.chatId === 42);
+  assert.deepEqual(u42?.readingWindows, ['08:00', '19:00']);
+  assert.deepEqual(u42?.interestTags, ['football', 'ai']);
+  assert.equal(u42?.tz, 'Europe/Moscow');
+  db.close();
+});
+
+test('selectActiveUsers: пусто, когда активных нет', () => {
+  const db = memDb();
+  createUser(db, base, 1000);
+  setUserInactive(db, 42, 2000);
+  assert.deepEqual(selectActiveUsers(db), []);
+  db.close();
+});
+
+test('setLastSent: двигает last_sent_at, не трогает updated_at', () => {
+  const db = memDb();
+  createUser(db, base, 1000);
+  setLastSent(db, 42, 1717000000000);
+  const u = getUser(db, 42);
+  assert.equal(u?.lastSentAt, 1717000000000);
+  assert.equal(u?.updatedAt, 1000); // last_sent_at — состояние расписания, не правка профиля
   db.close();
 });

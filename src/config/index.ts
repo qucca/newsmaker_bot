@@ -29,13 +29,25 @@ const EnvSchema = z.object({
   // Отправка (T13): лимиты троттла очереди — ~1/с на чат, ~30/с глобально.
   SEND_GLOBAL_RPS: z.coerce.number().int().positive().default(30),
   SEND_PER_CHAT_RPS: z.coerce.number().int().positive().default(1),
+  // Планировщик (T15): интервал тикера окон (отправка) и интервал глобального прохода
+  // (сбор+обогащение+кластеризация, идёт ДО окна) — в минутах. Два разных таймера:
+  // вычисление разведено с отправкой (design.md «Расписание»).
+  TICK_INTERVAL_MIN: z.coerce.number().int().positive().default(15),
+  GLOBAL_PASS_INTERVAL_MIN: z.coerce.number().int().positive().default(30),
+  // Калибровка (T14): кнопки 👍/👎 на первых N карточках юзера (0 → выключить кнопки совсем).
+  CALIBRATION_CARDS: z.coerce.number().int().nonnegative().default(30),
+  // Рендер (T11): потолок выходных токенов на саммари (title + короткое саммари).
+  RENDER_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(800),
 });
 
 export type Config = Readonly<z.infer<typeof EnvSchema>>;
 
 /** Поля-секреты: их значения НИКОГДА не попадают в логи и тексты ошибок. */
 const SECRET_KEYS: readonly string[] = [
-  'TELEGRAM_BOT_TOKEN', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_API_KEY',
+  'TELEGRAM_BOT_TOKEN',
+  'ANTHROPIC_API_KEY',
+  'OPENAI_API_KEY',
+  'GOOGLE_API_KEY',
 ];
 
 /**
@@ -119,7 +131,9 @@ const ANTHROPIC_DEFAULT_MODELS = { default: 'claude-haiku-4-5', render: 'claude-
 export function resolveLlmConfig(env: Record<string, string | undefined>): LlmConfig {
   const provider = env.LLM_PROVIDER;
   if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'google') {
-    throw new Error(`LLM_PROVIDER: ожидается anthropic | openai | google (получено: ${provider ?? '(пусто)'})`);
+    throw new Error(
+      `LLM_PROVIDER: ожидается anthropic | openai | google (получено: ${provider ?? '(пусто)'})`,
+    );
   }
   const keyEnv = PROVIDER_KEY_ENV[provider];
   const apiKey = env[keyEnv];

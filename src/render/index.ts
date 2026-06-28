@@ -1,16 +1,12 @@
 import type Database from 'better-sqlite3';
 import { resolveLlmConfig } from '../config/index.js';
-import {
-  selectClusterForRender,
-  getSummary,
-  upsertSummary,
-} from '../db/summaries.js';
+import { selectClusterForRender, getSummary, upsertSummary } from '../db/summaries.js';
 import { createLLMClient, type LLMClient } from '../llm/index.js';
 import { createLogger, type Logger } from '../log/index.js';
 import { buildRenderPrompt } from './prompt.js';
 import { RenderSummarySchema, type RenderSummary } from './schema.js';
 
-const RENDER_MAX_OUTPUT_TOKENS = 800; // title + короткое саммари с запасом
+const RENDER_MAX_OUTPUT_TOKENS = 800; // дефолт; слой запуска (T15) пробрасывает RENDER_MAX_OUTPUT_TOKENS из config
 
 /** Результат рендера одной пары: источник значения либо пропуск. */
 export type RenderOutcome =
@@ -26,6 +22,7 @@ export interface RenderPair {
 export interface RenderDeps {
   now?: () => number;
   logger?: Logger;
+  maxOutputTokens?: number; // потолок токенов на саммари (дефолт RENDER_MAX_OUTPUT_TOKENS); проброс из config — T15
 }
 
 export interface RenderPairsResult {
@@ -68,7 +65,7 @@ export async function getOrRenderSummary(
     input,
     schema: RenderSummarySchema,
     schemaName: 'render_summary',
-    maxOutputTokens: RENDER_MAX_OUTPUT_TOKENS,
+    maxOutputTokens: deps.maxOutputTokens ?? RENDER_MAX_OUTPUT_TOKENS,
   });
 
   upsertSummary(db, {

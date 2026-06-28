@@ -52,7 +52,9 @@ test('getOrRenderSummary: miss → рендер и запись в summaries', a
   const out = await getOrRenderSummary(db, llm, id, 'ru', { logger: silent, now: () => 5 });
   assert.deepEqual(out, { status: 'rendered', summary: okCard });
   assert.deepEqual(getSummary(db, id, 'ru'), {
-    title: 'Заголовок', summary: 'Кратко о событии.', contentHash: 'h1',
+    title: 'Заголовок',
+    summary: 'Кратко о событии.',
+    contentHash: 'h1',
   });
   db.close();
 });
@@ -61,7 +63,13 @@ test('getOrRenderSummary: cache hit при совпадении content_hash →
   const db = memDb();
   const id = seedCluster(db);
   upsertSummary(db, {
-    clusterId: id, lang: 'ru', title: 'T', summary: 'S', contentHash: 'h1', model: 'm', createdAt: 1,
+    clusterId: id,
+    lang: 'ru',
+    title: 'T',
+    summary: 'S',
+    contentHash: 'h1',
+    model: 'm',
+    createdAt: 1,
   });
   const llm = fakeClient([]); // любой вызов LLM исчерпает очередь → throw
 
@@ -74,14 +82,22 @@ test('getOrRenderSummary: stale (content_hash разошёлся) → перер
   const db = memDb();
   const id = seedCluster(db, { contentHash: 'h2' });
   upsertSummary(db, {
-    clusterId: id, lang: 'ru', title: 'old', summary: 'old', contentHash: 'h1', model: 'm', createdAt: 1,
+    clusterId: id,
+    lang: 'ru',
+    title: 'old',
+    summary: 'old',
+    contentHash: 'h1',
+    model: 'm',
+    createdAt: 1,
   });
   const llm = fakeClient([result(okCard)]);
 
   const out = await getOrRenderSummary(db, llm, id, 'ru', { logger: silent, now: () => 9 });
   assert.equal(out.status, 'rendered');
   assert.deepEqual(getSummary(db, id, 'ru'), {
-    title: 'Заголовок', summary: 'Кратко о событии.', contentHash: 'h2',
+    title: 'Заголовок',
+    summary: 'Кратко о событии.',
+    contentHash: 'h2',
   });
   db.close();
 });
@@ -106,10 +122,16 @@ test('getOrRenderSummary: провал схемы (после ретрая) пр
 
 test('renderPairs: считает rendered/cached/skipped, изолирует сбой пары', async () => {
   const db = memDb();
-  const idA = seedCluster(db);                                            // рендер
-  const idB = seedCluster(db);                                            // кеш
+  const idA = seedCluster(db); // рендер
+  const idB = seedCluster(db); // кеш
   upsertSummary(db, {
-    clusterId: idB, lang: 'ru', title: 'T', summary: 'S', contentHash: 'h1', model: 'm', createdAt: 1,
+    clusterId: idB,
+    lang: 'ru',
+    title: 'T',
+    summary: 'S',
+    contentHash: 'h1',
+    model: 'm',
+    createdAt: 1,
   });
   const idC = seedCluster(db, { neutralFacts: null, contentHash: null }); // skip (NULL-факты)
 
@@ -125,6 +147,24 @@ test('renderPairs: считает rendered/cached/skipped, изолирует с
     { logger: silent, now: () => 7 },
   );
   assert.deepEqual(res, { rendered: 1, cached: 1, skipped: 1 });
+  db.close();
+});
+
+test('getOrRenderSummary: maxOutputTokens из deps доходит до адаптера; дефолт 800', async () => {
+  const db = memDb();
+
+  const id1 = seedCluster(db);
+  const adapter1 = createFakeAdapter({ results: [result(okCard)] });
+  const llm1 = createClient(adapter1, { logger: silent });
+  await getOrRenderSummary(db, llm1, id1, 'ru', { logger: silent, maxOutputTokens: 1234 });
+  assert.equal(adapter1.calls[0].maxOutputTokens, 1234);
+
+  const id2 = seedCluster(db);
+  const adapter2 = createFakeAdapter({ results: [result(okCard)] });
+  const llm2 = createClient(adapter2, { logger: silent });
+  await getOrRenderSummary(db, llm2, id2, 'en', { logger: silent });
+  assert.equal(adapter2.calls[0].maxOutputTokens, 800);
+
   db.close();
 });
 
