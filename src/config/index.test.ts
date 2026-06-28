@@ -47,3 +47,16 @@ test('SCORE_WINDOW_HOURS: коэрсится из строки и должен �
   assert.equal(c.SCORE_WINDOW_HOURS, 48);
   assert.throws(() => parseConfig({ TELEGRAM_BOT_TOKEN: 't', SCORE_WINDOW_HOURS: '0' }));
 });
+
+test('SEND_GLOBAL_RPS / SEND_PER_CHAT_RPS: дефолты 30 / 1', () => {
+  const c = parseConfig({ TELEGRAM_BOT_TOKEN: 't' });
+  assert.equal(c.SEND_GLOBAL_RPS, 30);
+  assert.equal(c.SEND_PER_CHAT_RPS, 1);
+});
+
+test('SEND_*_RPS: коэрсятся из строки и должны быть положительными', () => {
+  const c = parseConfig({ TELEGRAM_BOT_TOKEN: 't', SEND_GLOBAL_RPS: '25', SEND_PER_CHAT_RPS: '2' });
+  assert.equal(c.SEND_GLOBAL_RPS, 25);
+  assert.equal(c.SEND_PER_CHAT_RPS, 2);
+  assert.throws(() => parseConfig({ TELEGRAM_BOT_TOKEN: 't', SEND_GLOBAL_RPS: '0' }));
+});

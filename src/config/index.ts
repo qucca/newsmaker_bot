@@ -26,6 +26,9 @@ const EnvSchema = z.object({
   MAX_USERS: z.coerce.number().int().positive().default(100),
   // Ранжирование (T10): окно свежести кандидатов-кластеров в часах (по updated_at).
   SCORE_WINDOW_HOURS: z.coerce.number().int().positive().default(72),
+  // Отправка (T13): лимиты троттла очереди — ~1/с на чат, ~30/с глобально.
+  SEND_GLOBAL_RPS: z.coerce.number().int().positive().default(30),
+  SEND_PER_CHAT_RPS: z.coerce.number().int().positive().default(1),
 });
 
 export type Config = Readonly<z.infer<typeof EnvSchema>>;

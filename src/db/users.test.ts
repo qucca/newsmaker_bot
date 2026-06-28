@@ -8,6 +8,7 @@ import {
   updateUserFields,
   deleteUser,
   countActiveUsers,
+  setUserInactive,
   type NewUser,
 } from './users.js';
 
@@ -99,5 +100,29 @@ test('deleteUser удаляет строку (+CASCADE feedback)', () => {
       .n,
     0,
   );
+  db.close();
+});
+
+test('setUserInactive: ставит active=0 и обновляет updated_at', () => {
+  const db = memDb();
+  createUser(
+    db,
+    {
+      chatId: 7,
+      lang: 'en',
+      tz: 'UTC',
+      interestTags: [],
+      profileText: '',
+      readingWindows: [],
+      maxItemsPerSend: 5,
+    },
+    1000,
+  );
+
+  setUserInactive(db, 7, 5000);
+
+  const u = getUser(db, 7);
+  assert.equal(u?.active, 0);
+  assert.equal(u?.updatedAt, 5000);
   db.close();
 });

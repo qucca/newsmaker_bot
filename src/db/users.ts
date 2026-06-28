@@ -147,3 +147,8 @@ export function countActiveUsers(db: Database.Database): number {
   };
   return row.n;
 }
+
+/** Деактивирует юзера (active=0) — при 403 от Telegram (бот заблокирован/юзер удалён). */
+export function setUserInactive(db: Database.Database, chatId: number, now: number): void {
+  db.prepare(`UPDATE users SET active = 0, updated_at = ? WHERE chat_id = ?`).run(now, chatId);
+}
