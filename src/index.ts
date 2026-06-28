@@ -11,7 +11,8 @@ import { selectActiveUsers, setLastSent, type UserRow } from './db/users.js';
 import { createBot } from './bot/index.js';
 import { createLogger, type Logger } from './log/index.js';
 import { createLLMClient, type LLMClient } from './llm/index.js';
-import { collectL1Candidates } from './sources/collect.js';
+import { collectCandidates } from './sources/collect.js';
+import { resolveCandidates } from './sources/resolve.js';
 import { persistCandidates } from './sources/persist.js';
 import { enrichPending } from './enrich/index.js';
 import { clusterPending } from './cluster/index.js';
@@ -74,8 +75,13 @@ async function startSchedulerForBot(
     runGlobalPass({
       logger,
       collect: async () => {
-        const candidates = await collectL1Candidates(db, { logger });
-        persistCandidates(db, candidates, { logger });
+        // Порядок (design.md): сбор → резолв обёрток GN → канонизация/дедуп (persist).
+        const collected = await collectCandidates(db, {
+          logger,
+          includeGn: config.GOOGLE_NEWS_ENABLED,
+        });
+        const resolved = await resolveCandidates(collected, { logger });
+        persistCandidates(db, resolved, { logger });
       },
       enrich: async () => {
         await enrichPending(db, llm, {

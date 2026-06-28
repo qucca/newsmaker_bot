@@ -92,6 +92,18 @@ test('CALIBRATION_CARDS: дефолт 30, коэрсится, неотрицат
   assert.throws(() => parseConfig({ TELEGRAM_BOT_TOKEN: 't', CALIBRATION_CARDS: '-1' }));
 });
 
+test('GOOGLE_NEWS_ENABLED: дефолт false, парсит true/false (kill-switch GN, T16)', () => {
+  assert.equal(parseConfig({ TELEGRAM_BOT_TOKEN: 't' }).GOOGLE_NEWS_ENABLED, false);
+  assert.equal(
+    parseConfig({ TELEGRAM_BOT_TOKEN: 't', GOOGLE_NEWS_ENABLED: 'true' }).GOOGLE_NEWS_ENABLED,
+    true,
+  );
+  assert.equal(
+    parseConfig({ TELEGRAM_BOT_TOKEN: 't', GOOGLE_NEWS_ENABLED: 'false' }).GOOGLE_NEWS_ENABLED,
+    false,
+  );
+});
+
 test('RENDER_MAX_OUTPUT_TOKENS: дефолт 800, коэрсится, положительный', () => {
   const c = parseConfig({ TELEGRAM_BOT_TOKEN: 't' });
   assert.equal(c.RENDER_MAX_OUTPUT_TOKENS, 800);

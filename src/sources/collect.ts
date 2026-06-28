@@ -1,13 +1,14 @@
 import type Database from 'better-sqlite3';
-import { readEnabledL1Sources, updateConditionalGet } from '../db/sources.js';
+import { readEnabledFeedSources, updateConditionalGet } from '../db/sources.js';
 import { createLogger, type Logger } from '../log/index.js';
 import { fetchFeed, type FeedFetchResult } from './feed.js';
 import { applyCap, isFresh } from './select.js';
 import type { RawCandidate, SourceRow } from './types.js';
 
-// Оркестрация сбора L1 (T4): читаем активные фиды, фетчим каждый изолированно,
-// режем по свежести, ограничиваем пер-фид и общим капом. Результат — сырые кандидаты
-// в памяти (в БД их пишет T5). Conditional-GET состояние сохраняем по ходу.
+// Оркестрация сбора (T4): читаем активные фиды (L1, +GN при includeGn), фетчим каждый
+// изолированно, режем по свежести, ограничиваем пер-фид и общим капом. Результат — сырые
+// кандидаты в памяти (в БД их пишет T5; раскрутку обёрток GN — T16 resolve ДО persist).
+// Conditional-GET состояние сохраняем по ходу.
 
 // Дефолты — поведенческие решения (согласованы): окно свежести = верхняя граница окна
 // кластеризации; капы защищают от шумного фида и стоимости обогащения (T7).
@@ -22,6 +23,8 @@ export interface CollectDeps {
   maxAgeMs: number;
   perFeedCap: number;
   globalCap: number;
+  /** Включать ли GN-источники (kind='gnews_topic'). Дефолт false — L1 самодостаточен. */
+  includeGn: boolean;
 }
 
 function errorMessage(error: unknown): string {
@@ -33,7 +36,7 @@ function yieldToEventLoop(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
-export async function collectL1Candidates(
+export async function collectCandidates(
   db: Database.Database,
   deps: Partial<CollectDeps> = {},
 ): Promise<RawCandidate[]> {
@@ -44,8 +47,9 @@ export async function collectL1Candidates(
   const maxAgeMs = deps.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
   const perFeedCap = deps.perFeedCap ?? DEFAULT_PER_FEED_CAP;
   const globalCap = deps.globalCap ?? DEFAULT_GLOBAL_CAP;
+  const includeGn = deps.includeGn ?? false;
 
-  const sources = readEnabledL1Sources(db);
+  const sources = readEnabledFeedSources(db, { includeGn });
   const collected: RawCandidate[] = [];
 
   for (const source of sources) {

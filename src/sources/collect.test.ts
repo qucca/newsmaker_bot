@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { runMigrations } from '../db/migrate.js';
 import { readEnabledL1Sources } from '../db/sources.js';
-import { collectL1Candidates } from './collect.js';
+import { collectCandidates } from './collect.js';
 import type { FeedFetchResult } from './feed.js';
 import type { Logger } from '../log/index.js';
 import type { RawCandidate, SourceRow } from './types.js';
@@ -45,14 +45,14 @@ function ok(candidates: RawCandidate[], etag: string | null = null): FeedFetchRe
   return { status: 'ok', candidates, etag, lastModified: null };
 }
 
-test('collectL1Candidates: фетчит только активные L1 и возвращает кандидатов', async () => {
+test('collectCandidates: фетчит только активные L1 и возвращает кандидатов', async () => {
   const db = memDb();
   const keep = insert(db, { name: 'Keep', url: 'https://a.com/feed' });
   insert(db, { name: 'Disabled', url: 'https://b.com/feed', enabled: 0 });
   insert(db, { name: 'GNews', url: 'https://c.com/feed', kind: 'gnews_topic' });
 
   const fetched: number[] = [];
-  const result = await collectL1Candidates(db, {
+  const result = await collectCandidates(db, {
     now: () => FIXED_NOW,
     logger: silent,
     fetchFeed: (s: SourceRow) => {
@@ -67,12 +67,12 @@ test('collectL1Candidates: фетчит только активные L1 и во
   db.close();
 });
 
-test('collectL1Candidates: изоляция — упавший фид не валит прогон', async () => {
+test('collectCandidates: изоляция — упавший фид не валит прогон', async () => {
   const db = memDb();
   const bad = insert(db, { name: 'Bad', url: 'https://bad.com/feed' });
   const good = insert(db, { name: 'Good', url: 'https://good.com/feed' });
 
-  const result = await collectL1Candidates(db, {
+  const result = await collectCandidates(db, {
     now: () => FIXED_NOW,
     logger: silent,
     fetchFeed: (s: SourceRow) =>
@@ -86,11 +86,11 @@ test('collectL1Candidates: изоляция — упавший фид не ва�
   db.close();
 });
 
-test('collectL1Candidates: сохраняет conditional-GET после успешного фетча', async () => {
+test('collectCandidates: сохраняет conditional-GET после успешного фетча', async () => {
   const db = memDb();
   insert(db, { name: 'A', url: 'https://a.com/feed' });
 
-  await collectL1Candidates(db, {
+  await collectCandidates(db, {
     now: () => FIXED_NOW,
     logger: silent,
     fetchFeed: () => Promise.resolve(ok([candidate()], 'W/"new"')),
@@ -102,11 +102,11 @@ test('collectL1Candidates: сохраняет conditional-GET после усп�
   db.close();
 });
 
-test('collectL1Candidates: 304 — без кандидатов, но last_fetched_at обновлён', async () => {
+test('collectCandidates: 304 — без кандидатов, но last_fetched_at обновлён', async () => {
   const db = memDb();
   insert(db, { name: 'A', url: 'https://a.com/feed' });
 
-  const result = await collectL1Candidates(db, {
+  const result = await collectCandidates(db, {
     now: () => FIXED_NOW,
     logger: silent,
     fetchFeed: () =>
@@ -125,11 +125,11 @@ test('collectL1Candidates: 304 — без кандидатов, но last_fetche
   db.close();
 });
 
-test('collectL1Candidates: режет старше окна свежести', async () => {
+test('collectCandidates: режет старше окна свежести', async () => {
   const db = memDb();
   insert(db, { name: 'A', url: 'https://a.com/feed' });
 
-  const result = await collectL1Candidates(db, {
+  const result = await collectCandidates(db, {
     now: () => FIXED_NOW,
     logger: silent,
     maxAgeMs: 72 * HOUR,
@@ -148,14 +148,14 @@ test('collectL1Candidates: режет старше окна свежести', a
   db.close();
 });
 
-test('collectL1Candidates: применяет пер-фид кап', async () => {
+test('collectCandidates: применяет пер-фид кап', async () => {
   const db = memDb();
   insert(db, { name: 'A', url: 'https://a.com/feed' });
 
   const many = Array.from({ length: 5 }, (_, i) =>
     candidate({ title: `t${i}`, publishedAt: FIXED_NOW - i * HOUR }),
   );
-  const result = await collectL1Candidates(db, {
+  const result = await collectCandidates(db, {
     now: () => FIXED_NOW,
     logger: silent,
     perFeedCap: 2,
@@ -166,12 +166,12 @@ test('collectL1Candidates: применяет пер-фид кап', async () =>
   db.close();
 });
 
-test('collectL1Candidates: применяет общий кап поверх пер-фид', async () => {
+test('collectCandidates: применяет общий кап поверх пер-фид', async () => {
   const db = memDb();
   insert(db, { name: 'A', url: 'https://a.com/feed' });
   insert(db, { name: 'B', url: 'https://b.com/feed' });
 
-  const result = await collectL1Candidates(db, {
+  const result = await collectCandidates(db, {
     now: () => FIXED_NOW,
     logger: silent,
     perFeedCap: 10,
@@ -183,5 +183,28 @@ test('collectL1Candidates: применяет общий кап поверх п�
   });
 
   assert.equal(result.length, 3);
+  db.close();
+});
+
+test('collectCandidates: includeGn=true фетчит и gnews_topic', async () => {
+  const db = memDb();
+  const l1 = insert(db, { name: 'L1', url: 'https://a.com/feed' });
+  const gn = insert(db, { name: 'GN', url: 'https://news.google.com/rss', kind: 'gnews_topic' });
+
+  const fetched: number[] = [];
+  await collectCandidates(db, {
+    now: () => FIXED_NOW,
+    logger: silent,
+    includeGn: true,
+    fetchFeed: (s: SourceRow) => {
+      fetched.push(s.id);
+      return Promise.resolve(ok([candidate({ feedSourceId: s.id })]));
+    },
+  });
+
+  assert.deepEqual(
+    fetched.sort((a, b) => a - b),
+    [l1, gn].sort((a, b) => a - b),
+  );
   db.close();
 });
