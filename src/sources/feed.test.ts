@@ -68,6 +68,17 @@ test('fetchFeed: шлёт conditional-заголовки из сохранённ
   assert.equal(sent?.get('if-modified-since'), 'lm1');
 });
 
+test('fetchFeed: шлёт браузерный User-Agent и Accept (анти-бот-блок, напр. Kommersant 406)', async () => {
+  let sent: Headers | undefined;
+  const fetchImpl = (_url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    sent = new Headers(init?.headers);
+    return Promise.resolve(fakeResponse({ status: 200, body: RSS }));
+  };
+  await fetchFeed(makeSource(), { fetchImpl, sleep: noSleep });
+  assert.match(sent?.get('user-agent') ?? '', /Mozilla/, 'нет браузерного User-Agent');
+  assert.match(sent?.get('accept') ?? '', /xml/, 'Accept без xml');
+});
+
 test('fetchFeed: 304 → not-modified, сохраняет прежние валидаторы', async () => {
   const fetchImpl = (): Promise<Response> => Promise.resolve(fakeResponse({ status: 304 }));
   const res = await fetchFeed(makeSource({ etag: 'W/"v1"', lastModified: 'lm1' }), {

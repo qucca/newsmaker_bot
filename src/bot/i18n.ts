@@ -130,13 +130,15 @@ const MESSAGES: Record<Lang, Record<MsgKey, string>> = {
 
 const CATEGORY_LABELS: Record<Category, { ru: string; en: string }> = {
   world_geopolitics: { ru: 'Геополитика', en: 'Geopolitics' },
-  domestic_politics: { ru: 'Внутр. политика', en: 'Domestic politics' },
+  elections_government: { ru: 'Выборы и власть', en: 'Elections & government' },
   war_conflict: { ru: 'Войны и конфликты', en: 'War & conflict' },
   world_other: { ru: 'Мир: прочее', en: 'World: other' },
   markets_finance: { ru: 'Рынки и финансы', en: 'Markets & finance' },
   economy_macro: { ru: 'Экономика', en: 'Economy' },
   companies_corporate: { ru: 'Компании', en: 'Companies' },
   crypto: { ru: 'Крипто', en: 'Crypto' },
+  personal_finance: { ru: 'Личные финансы', en: 'Personal finance' },
+  real_estate: { ru: 'Недвижимость', en: 'Real estate' },
   business_other: { ru: 'Бизнес: прочее', en: 'Business: other' },
   ai: { ru: 'ИИ', en: 'AI' },
   consumer_tech: { ru: 'Гаджеты', en: 'Consumer tech' },
@@ -160,6 +162,7 @@ const CATEGORY_LABELS: Record<Category, { ru: string; en: string }> = {
   movies_tv: { ru: 'Кино и сериалы', en: 'Movies & TV' },
   music: { ru: 'Музыка', en: 'Music' },
   gaming: { ru: 'Игры', en: 'Gaming' },
+  esports: { ru: 'Киберспорт', en: 'Esports' },
   books: { ru: 'Книги', en: 'Books' },
   art_culture: { ru: 'Искусство', en: 'Art & culture' },
   celebrities: { ru: 'Знаменитости', en: 'Celebrities' },
@@ -167,13 +170,18 @@ const CATEGORY_LABELS: Record<Category, { ru: string; en: string }> = {
   climate: { ru: 'Климат', en: 'Climate' },
   energy: { ru: 'Энергетика', en: 'Energy' },
   nature_wildlife: { ru: 'Природа', en: 'Nature & wildlife' },
+  weather_disasters: { ru: 'Погода и стихия', en: 'Weather & disasters' },
   environment_other: { ru: 'Экология: прочее', en: 'Environment: other' },
   education: { ru: 'Образование', en: 'Education' },
   religion: { ru: 'Религия', en: 'Religion' },
   migration: { ru: 'Миграция', en: 'Migration' },
   crime_justice: { ru: 'Криминал и право', en: 'Crime & justice' },
-  lifestyle: { ru: 'Лайфстайл', en: 'Lifestyle' },
   society_other: { ru: 'Общество: прочее', en: 'Society: other' },
+  travel: { ru: 'Путешествия', en: 'Travel' },
+  food_drink: { ru: 'Еда и напитки', en: 'Food & drink' },
+  fashion_style: { ru: 'Мода и стиль', en: 'Fashion & style' },
+  autos: { ru: 'Авто', en: 'Autos' },
+  lifestyle_other: { ru: 'Лайфстайл: прочее', en: 'Lifestyle: other' },
 };
 
 const GROUP_LABELS: Record<string, { ru: string; en: string }> = {
@@ -186,6 +194,7 @@ const GROUP_LABELS: Record<string, { ru: string; en: string }> = {
   culture_entertainment: { ru: 'Культура и развлечения', en: 'Culture & entertainment' },
   environment: { ru: 'Экология', en: 'Environment' },
   society: { ru: 'Общество', en: 'Society' },
+  lifestyle: { ru: 'Лайфстайл', en: 'Lifestyle' },
 };
 
 /** Локализованная строка по ключу с подстановкой {param}. */

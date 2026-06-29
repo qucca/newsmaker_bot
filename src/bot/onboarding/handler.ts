@@ -1,6 +1,6 @@
 import type { Bot, Context, NextFunction } from 'grammy';
 import type Database from 'better-sqlite3';
-import { type Category, CATEGORY_SET } from '../../categories.js';
+import { type Category, SELECTABLE_CATEGORY_SET } from '../../categories.js';
 import { isLang } from '../../langs.js';
 import { decodeCb } from '../callback.js';
 import { t } from '../i18n.js';
@@ -36,7 +36,8 @@ export function parseOnbEvent(state: OnbState, data: string): OnbEvent | undefin
     case 'lang':
       return arg !== undefined && isLang(arg) ? { t: 'pickLang', lang: arg } : undefined;
     case 'tag':
-      return arg !== undefined && CATEGORY_SET.has(arg)
+      // только выбираемые листья (catch-all *_other скрыт из онбординга, P2a)
+      return arg !== undefined && SELECTABLE_CATEGORY_SET.has(arg)
         ? { t: 'toggleTag', tag: arg as Category }
         : undefined;
     case 'grp':

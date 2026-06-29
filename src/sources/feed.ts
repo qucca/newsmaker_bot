@@ -10,6 +10,15 @@ import type { RawCandidate, SourceRow } from './types.js';
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_RETRIES = 2;
 
+// Браузерный UA + Accept: дефолтный node-fetch UA блокируется частью издателей
+// (напр. Kommersant отдаёт 406 без браузерного UA). Conditional-заголовки добавляются
+// поверх (ключи не пересекаются), так что 304-логика не страдает.
+const DEFAULT_REQUEST_HEADERS: Record<string, string> = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+  Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
+};
+
 /** Результат фетча фида. not-modified — сервер ответил 304, кандидатов нет. */
 export interface FeedFetchResult {
   status: 'ok' | 'not-modified';
@@ -56,7 +65,10 @@ export async function fetchFeed(
     baseDelayMs,
   } = deps;
 
-  const headers = buildConditionalHeaders({ etag: source.etag, lastModified: source.lastModified });
+  const headers = {
+    ...DEFAULT_REQUEST_HEADERS,
+    ...buildConditionalHeaders({ etag: source.etag, lastModified: source.lastModified }),
+  };
 
   const response = await withRetry(
     async () => {
