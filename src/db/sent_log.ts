@@ -8,20 +8,17 @@ const INSERT_SENT = `
   VALUES (?, ?, ?, ?)
   ON CONFLICT (chat_id, cluster_id) DO NOTHING`;
 
-/** Идемпотентно фиксирует факт отправки кластера юзеру. Повтор — no-op. */
+/**
+ * Идемпотентно фиксирует факт отправки кластера юзеру. Повтор — no-op.
+ * Возвращает true, если строка реально вставлена (не дедуп) — сигнал для инкремента
+ * lifetime-счётчика калибровки (чтобы повторная отправка не накручивала счёт).
+ */
 export function insertSent(
   db: Database.Database,
   chatId: number,
   clusterId: number,
   kind: 'digest' | 'urgent',
   sentAt: number,
-): void {
-  db.prepare(INSERT_SENT).run(chatId, clusterId, kind, sentAt);
-}
-
-const COUNT_SENT = `SELECT COUNT(*) AS n FROM sent_log WHERE chat_id = ?`;
-
-/** Сколько кластеров всего отправлено юзеру (гейт калибровки кнопок фидбэка, T14). */
-export function countSentCards(db: Database.Database, chatId: number): number {
-  return (db.prepare(COUNT_SENT).get(chatId) as { n: number }).n;
+): boolean {
+  return db.prepare(INSERT_SENT).run(chatId, clusterId, kind, sentAt).changes > 0;
 }

@@ -26,6 +26,9 @@ const EnvSchema = z.object({
   MAX_USERS: z.coerce.number().int().positive().default(100),
   // Ранжирование (T10): окно свежести кандидатов-кластеров в часах (по updated_at).
   SCORE_WINDOW_HOURS: z.coerce.number().int().positive().default(72),
+  // Ретенция БД: горизонт хранения articles/clusters в днях (daily maintenance-тик). ОБЯЗАН быть
+  // ≥ окон кластеризации/ранжирования (72ч), иначе всплывёт переотправка — дефолт 14д ≫ 72ч.
+  RETENTION_DAYS: z.coerce.number().int().positive().default(14),
   // Отправка (T13): лимиты троттла очереди — ~1/с на чат, ~30/с глобально.
   SEND_GLOBAL_RPS: z.coerce.number().int().positive().default(30),
   SEND_PER_CHAT_RPS: z.coerce.number().int().positive().default(1),

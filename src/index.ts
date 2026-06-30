@@ -22,6 +22,7 @@ import { buildUserCards } from './card/index.js';
 import type { CardMessage } from './card/compose.js';
 import { createSendQueue } from './send/queue.js';
 import { sendUserCards } from './send/index.js';
+import { runRetention } from './db/retention.js';
 import {
   runGlobalPass,
   runDispatchTick,
@@ -32,6 +33,7 @@ import type { Database } from 'better-sqlite3';
 
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
+const DAY_MS = 86_400_000;
 
 /**
  * Поднимает планировщик (T15) рядом с ботом: глобальный проход (collect→enrich→cluster) на
@@ -122,12 +124,22 @@ async function startSchedulerForBot(
     });
   };
 
+  // Ретенция БД: горизонт RETENTION_DAYS, daily-тик (вычисление вне точки запуска — CLAUDE.md).
+  // runRetention синхронный (better-sqlite3) — оборачиваем в Promise для единого контракта тиков.
+  const runMaintenance = (): Promise<void> => {
+    const res = runRetention(db, Date.now(), config.RETENTION_DAYS * DAY_MS);
+    logger.info('retention done', { clusters: res.clusters, articles: res.articles });
+    return Promise.resolve();
+  };
+
   return startScheduler({
     logger,
     runGlobalPass: runGlobal,
     runDispatch,
+    runMaintenance,
     tickIntervalMs: config.TICK_INTERVAL_MIN * MINUTE_MS,
     globalPassIntervalMs: config.GLOBAL_PASS_INTERVAL_MIN * MINUTE_MS,
+    maintenanceIntervalMs: DAY_MS,
   });
 }
 

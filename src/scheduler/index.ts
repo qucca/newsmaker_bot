@@ -130,8 +130,10 @@ export interface StartSchedulerDeps {
   logger?: Logger;
   runGlobalPass: () => Promise<void>;
   runDispatch: () => Promise<void>;
+  runMaintenance: () => Promise<void>; // ретенция БД (daily) — НЕ cron-на-юзера
   tickIntervalMs: number;
   globalPassIntervalMs: number;
+  maintenanceIntervalMs: number;
 }
 
 export interface SchedulerHandle {
@@ -139,28 +141,34 @@ export interface SchedulerHandle {
 }
 
 /**
- * Заводит два таймера (глобальный проход и тик окон) с защитой от наложения. Глобальный
- * проход прогоняется один раз сразу при старте (прогрев контента), дальше — по интервалу.
- * stop() гасит оба таймера.
+ * Заводит три таймера (глобальный проход, тик окон, ретенция БД) с защитой от наложения.
+ * Глобальный проход и ретенция прогоняются один раз сразу при старте (прогрев контента /
+ * чистка переживает частые рестарты, на которых daily-таймер сбрасывается), дальше — по
+ * интервалу. stop() гасит все таймеры.
  */
 export function startScheduler(deps: StartSchedulerDeps): SchedulerHandle {
   const logger = deps.logger ?? createLogger('scheduler');
   const runGlobal = guardedRunner(deps.runGlobalPass, logger, 'global-pass');
   const runDispatch = guardedRunner(deps.runDispatch, logger, 'dispatch');
+  const runMaintenance = guardedRunner(deps.runMaintenance, logger, 'maintenance');
 
   void runGlobal(); // прогрев: наполнить контент сразу, не ждать первого интервала
+  void runMaintenance(); // ретенция при старте: daily-таймер иначе не сработает при частых рестартах
   const gTimer = setInterval(() => void runGlobal(), deps.globalPassIntervalMs);
   const dTimer = setInterval(() => void runDispatch(), deps.tickIntervalMs);
+  const mTimer = setInterval(() => void runMaintenance(), deps.maintenanceIntervalMs);
 
   logger.info('scheduler started', {
     tickIntervalMs: deps.tickIntervalMs,
     globalPassIntervalMs: deps.globalPassIntervalMs,
+    maintenanceIntervalMs: deps.maintenanceIntervalMs,
   });
 
   return {
     stop: () => {
       clearInterval(gTimer);
       clearInterval(dTimer);
+      clearInterval(mTimer);
       logger.info('scheduler stopped');
     },
   };

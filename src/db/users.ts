@@ -138,6 +138,24 @@ export function setUserInactive(db: Database.Database, chatId: number, now: numb
   db.prepare(`UPDATE users SET active = 0, updated_at = ? WHERE chat_id = ?`).run(now, chatId);
 }
 
+/**
+ * Lifetime-счётчик отправленных карточек (гейт калибровки T14). Монотонный, не зависит от
+ * ретенции sent_log — читается вместо COUNT(sent_log). Нет юзера → 0.
+ */
+export function getCardsSentTotal(db: Database.Database, chatId: number): number {
+  const row = db.prepare(`SELECT cards_sent_total AS n FROM users WHERE chat_id = ?`).get(chatId) as
+    | { n: number }
+    | undefined;
+  return row?.n ?? 0;
+}
+
+/** Инкремент lifetime-счётчика на одну РЕАЛЬНУЮ отправку (при новой строке sent_log, не на дедуп). */
+export function incrementCardsSent(db: Database.Database, chatId: number): void {
+  db.prepare(`UPDATE users SET cards_sent_total = cards_sent_total + 1 WHERE chat_id = ?`).run(
+    chatId,
+  );
+}
+
 /** Переводит сырую строку в UserRow (мягкое чтение тегов — как в getUser). */
 function toUserRow(raw: RawRow): UserRow {
   const tags = (JSON.parse(raw.interest_tags) as unknown[]).filter(

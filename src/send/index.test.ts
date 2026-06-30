@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { GrammyError } from 'grammy';
 import { runMigrations } from '../db/migrate.js';
-import { getUser, createUser, type UserRow } from '../db/users.js';
+import { getUser, createUser, getCardsSentTotal, type UserRow } from '../db/users.js';
 import { createSendQueue } from './queue.js';
 import { sendUserCards, isForbidden, type SendDeps } from './index.js';
 import type { UserCard } from '../card/index.js';
@@ -65,6 +65,22 @@ test('sendUserCards: успех → строка в sent_log (kind=digest), sent
   assert.deepEqual(summary, { sent: 1, skipped: 0, deactivated: false });
   const row = db.prepare(`SELECT kind AS k, sent_at AS s FROM sent_log WHERE cluster_id = ?`).get(cl);
   assert.deepEqual(row, { k: 'digest', s: 999 });
+});
+
+test('sendUserCards: lifetime-счётчик растёт на новую карточку, не на дедуп', async () => {
+  const db = memDb();
+  const user = seedUser(db, 1);
+  const cards: UserCard[] = [
+    { clusterId: seedCluster(db), message: msg() },
+    { clusterId: seedCluster(db), message: msg() },
+  ];
+
+  await sendUserCards(deps(db, () => Promise.resolve({ ok: true })), user, cards);
+  assert.equal(getCardsSentTotal(db, 1), 2);
+
+  // Повторная отправка тех же кластеров — дедуп в sent_log, счётчик НЕ растёт.
+  await sendUserCards(deps(db, () => Promise.resolve({ ok: true })), user, cards);
+  assert.equal(getCardsSentTotal(db, 1), 2);
 });
 
 test('sendUserCards: 403 → active=0, deactivated, оставшиеся карточки не шлются', async () => {

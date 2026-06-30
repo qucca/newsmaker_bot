@@ -3,13 +3,14 @@ import type { UserRow } from '../db/users.js';
 import type { ScoredCluster } from '../score/rank.js';
 import { getSummary } from '../db/summaries.js';
 import { selectRepresentative } from '../db/articles.js';
-import { countSentCards } from '../db/sent_log.js';
+import { getCardsSentTotal } from '../db/users.js';
 import { createLogger, type Logger } from '../log/index.js';
 import { composeCard, type CardMessage } from './compose.js';
 
 // Окно калибровки: кнопки 👍/👎 показываем только на первых N карточках, что юзер вообще получил
-// (счёт по sent_log), потом фид чистый. N — порог-решение (PLAN.md «Решения T14»); проброс из
-// config — T15. Решение принимается ПРИ СБОРКЕ; старые сообщения не редактируем (нет трекинга message_id).
+// (lifetime-счётчик users.cards_sent_total — НЕ COUNT(sent_log): ретенция чистит sent_log, а
+// счётчик монотонный). N — порог-решение (PLAN.md «Решения T14»); проброс из config — T15.
+// Решение принимается ПРИ СБОРКЕ; старые сообщения не редактируем (нет трекинга message_id).
 const CALIBRATION_CARDS = 30;
 
 // T12: сборка карточек per-user из шорт-листа ранжирования (T10). Читает кеш summaries
@@ -40,7 +41,7 @@ export function buildUserCards(
 
   // Один раз на сборку: в окне калибровки ли юзер (кнопки фидбэка на все карточки дайджеста).
   const limit = deps.calibrationCards ?? CALIBRATION_CARDS;
-  const withFeedback = countSentCards(db, user.chatId) < limit;
+  const withFeedback = getCardsSentTotal(db, user.chatId) < limit;
 
   for (const s of scored) {
     const summary = getSummary(db, s.clusterId, user.lang);

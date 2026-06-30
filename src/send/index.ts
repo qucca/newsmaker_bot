@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import { GrammyError } from 'grammy';
 import type { UserRow } from '../db/users.js';
-import { setUserInactive } from '../db/users.js';
+import { setUserInactive, incrementCardsSent } from '../db/users.js';
 import { insertSent } from '../db/sent_log.js';
 import type { UserCard } from '../card/index.js';
 import type { CardMessage } from '../card/compose.js';
@@ -50,7 +50,10 @@ export async function sendUserCards(
   for (const card of cards) {
     try {
       await deps.queue.enqueue(user.chatId, () => deps.send(user.chatId, card.message));
-      insertSent(deps.db, user.chatId, card.clusterId, 'digest', deps.now());
+      // Новая строка sent_log (не дедуп) → инкремент lifetime-счётчика калибровки (T14).
+      if (insertSent(deps.db, user.chatId, card.clusterId, 'digest', deps.now())) {
+        incrementCardsSent(deps.db, user.chatId);
+      }
       sent++;
     } catch (err) {
       if (isForbidden(err)) {

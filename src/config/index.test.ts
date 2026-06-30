@@ -52,6 +52,12 @@ test('SCORE_WINDOW_HOURS: коэрсится из строки и должен �
   assert.throws(() => parseConfig({ TELEGRAM_BOT_TOKEN: 't', SCORE_WINDOW_HOURS: '0' }));
 });
 
+test('RETENTION_DAYS: дефолт 14, коэрсится из строки, положительный', () => {
+  assert.equal(parseConfig({ TELEGRAM_BOT_TOKEN: 't' }).RETENTION_DAYS, 14);
+  assert.equal(parseConfig({ TELEGRAM_BOT_TOKEN: 't', RETENTION_DAYS: '7' }).RETENTION_DAYS, 7);
+  assert.throws(() => parseConfig({ TELEGRAM_BOT_TOKEN: 't', RETENTION_DAYS: '0' }));
+});
+
 test('SEND_GLOBAL_RPS / SEND_PER_CHAT_RPS: дефолты 30 / 1', () => {
   const c = parseConfig({ TELEGRAM_BOT_TOKEN: 't' });
   assert.equal(c.SEND_GLOBAL_RPS, 30);
