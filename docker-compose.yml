@@ -1,0 +1,18 @@
+services:
+  bot:
+    build: .
+    image: news-bot:latest
+    container_name: news-bot
+    restart: unless-stopped
+    # Секреты и конфиг — из .env (НЕ коммитим). Шаблон: .env.example.
+    env_file:
+      - .env
+    # БД переживает рестарты в именованном томе. DATABASE_PATH по умолчанию
+    # ./data/news_bot.sqlite → /app/data/... (WORKDIR=/app), куда смонтирован том.
+    volumes:
+      - news_bot_data:/app/data
+    # Запас времени на graceful shutdown (SIGTERM → bot.stop()/scheduler.stop()).
+    stop_grace_period: 30s
+
+volumes:
+  news_bot_data:

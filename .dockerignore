@@ -1,0 +1,20 @@
+# Артефакты и локальные данные — не тащим в build context.
+node_modules
+dist
+data
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Секреты (в образ не попадают: env прокидывается через compose env_file в рантайме).
+.env
+.env.*
+!.env.example
+
+# VCS / редакторы / прочее.
+.git
+.gitignore
+**/*.test.ts
+npm-debug.log*
+.DS_Store
+docs/superpowers
