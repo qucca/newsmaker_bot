@@ -58,6 +58,11 @@ test('RETENTION_DAYS: дефолт 14, коэрсится из строки, п�
   assert.throws(() => parseConfig({ TELEGRAM_BOT_TOKEN: 't', RETENTION_DAYS: '0' }));
 });
 
+test('ADMIN_CHAT_ID: не задан → undefined (алерты выключены); коэрсится из строки', () => {
+  assert.equal(parseConfig({ TELEGRAM_BOT_TOKEN: 't' }).ADMIN_CHAT_ID, undefined);
+  assert.equal(parseConfig({ TELEGRAM_BOT_TOKEN: 't', ADMIN_CHAT_ID: '12345' }).ADMIN_CHAT_ID, 12345);
+});
+
 test('SEND_GLOBAL_RPS / SEND_PER_CHAT_RPS: дефолты 30 / 1', () => {
   const c = parseConfig({ TELEGRAM_BOT_TOKEN: 't' });
   assert.equal(c.SEND_GLOBAL_RPS, 30);

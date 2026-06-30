@@ -25,25 +25,33 @@ export interface GlobalPassDeps {
   cluster: () => Promise<void>; // кластеризация (T8)
 }
 
+export interface GlobalPassResult {
+  failed: string[]; // метки упавших шагов (вход для алертинга деградации)
+}
+
 /**
  * Один прогон глобального прохода. Шаги изолированы: сбой одного логируется и не блокирует
  * следующие (enrich дообработает накопленное в следующий раз; cluster идёт по уже
- * обогащённым). Идёт ДО окон, наполняет clusters/summaries-вход.
+ * обогащённым). Идёт ДО окон, наполняет clusters/summaries-вход. Возвращает упавшие шаги —
+ * сигнал для детекта «мягкой» деградации (RSS/LLM лежит, процесс жив).
  */
-export async function runGlobalPass(deps: GlobalPassDeps): Promise<void> {
+export async function runGlobalPass(deps: GlobalPassDeps): Promise<GlobalPassResult> {
   const logger = deps.logger ?? createLogger('scheduler');
   const steps: Array<[string, () => Promise<void>]> = [
     ['collect', deps.collect],
     ['enrich', deps.enrich],
     ['cluster', deps.cluster],
   ];
+  const failed: string[] = [];
   for (const [label, step] of steps) {
     try {
       await step();
     } catch (err) {
       logger.error('global pass step failed', { step: label, error: errMsg(err) });
+      failed.push(label);
     }
   }
+  return { failed };
 }
 
 // ── Тик окон (per-user отправка дайджеста) ──────────────────────────────────

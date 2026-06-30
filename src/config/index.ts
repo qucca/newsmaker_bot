@@ -41,6 +41,9 @@ const EnvSchema = z.object({
   CALIBRATION_CARDS: z.coerce.number().int().nonnegative().default(30),
   // Рендер (T11): потолок выходных токенов на саммари (title + короткое саммари).
   RENDER_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(800),
+  // Observability: chat_id админа для алертов (старт/краш/сбои пайплайна). Не задан → алерты
+  // выключены (только логи). Узнать свой id — у @userinfobot.
+  ADMIN_CHAT_ID: z.coerce.number().int().optional(),
   // Google News (T16): kill-switch L2. Дефолт false — L1 самодостаточен, GN включаем
   // осознанно (раскрутка обёрток — самая хрупкая зависимость, design.md).
   GOOGLE_NEWS_ENABLED: z

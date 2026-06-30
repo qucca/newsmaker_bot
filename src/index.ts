@@ -23,6 +23,7 @@ import type { CardMessage } from './card/compose.js';
 import { createSendQueue } from './send/queue.js';
 import { sendUserCards } from './send/index.js';
 import { runRetention } from './db/retention.js';
+import { createAdminNotifier, createFailureAlerter, type AdminNotify } from './notify/index.js';
 import {
   runGlobalPass,
   runDispatchTick,
@@ -34,6 +35,8 @@ import type { Database } from 'better-sqlite3';
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
+// Алерт о деградации после стольких подряд упавших глобальных проходов (~1.5ч при интервале 30м).
+const GLOBAL_PASS_FAIL_THRESHOLD = 3;
 
 /**
  * Поднимает планировщик (T15) рядом с ботом: глобальный проход (collect→enrich→cluster) на
@@ -48,6 +51,7 @@ async function startSchedulerForBot(
   bot: Bot,
   config: Config,
   logger: Logger,
+  notify: AdminNotify,
 ): Promise<SchedulerHandle | undefined> {
   let llm: LLMClient;
   try {
@@ -73,8 +77,14 @@ async function startSchedulerForBot(
       reply_markup: msg.replyMarkup,
     });
 
-  const runGlobal = (): Promise<void> =>
-    runGlobalPass({
+  // Детект «мягкой» деградации: алерт после N подряд проходов с упавшим шагом (RSS/LLM лежит).
+  const alertGlobalFailure = createFailureAlerter({
+    threshold: GLOBAL_PASS_FAIL_THRESHOLD,
+    notify,
+    label: 'global-pass',
+  });
+  const runGlobal = async (): Promise<void> => {
+    const { failed } = await runGlobalPass({
       logger,
       collect: async () => {
         // Порядок (design.md): сбор → резолв обёрток GN → канонизация/дедуп (persist).
@@ -100,6 +110,8 @@ async function startSchedulerForBot(
         });
       },
     });
+    await alertGlobalFailure(failed.length > 0);
+  };
 
   const scoreWindowMs = config.SCORE_WINDOW_HOURS * HOUR_MS;
   const processUser = async (user: UserRow): Promise<void> => {
@@ -151,7 +163,24 @@ async function main(): Promise<void> {
   const db = getDb();
   const bot = createBot(config.TELEGRAM_BOT_TOKEN, { db, now: () => Date.now() }, config.MAX_USERS);
 
-  const scheduler = await startSchedulerForBot(db, bot, config, logger);
+  // Алерты админу (старт/краш/деградация). Не задан ADMIN_CHAT_ID → только логи.
+  const notify = createAdminNotifier({
+    adminChatId: config.ADMIN_CHAT_ID,
+    send: (chatId, text) => bot.api.sendMessage(chatId, text),
+    logger,
+  });
+
+  // Краш-алерты: неперехваченное исключение/реджект → алерт + лог + выход (Docker рестартует).
+  const fatal = (label: string, err: unknown): void => {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error(label, { error: msg });
+    setTimeout(() => process.exit(1), 3000).unref(); // backstop, если алерт завис
+    void notify(`🔴 news_bot: ${label} — ${msg}`).finally(() => process.exit(1));
+  };
+  process.on('uncaughtException', (err) => fatal('uncaughtException', err));
+  process.on('unhandledRejection', (reason) => fatal('unhandledRejection', reason));
+
+  const scheduler = await startSchedulerForBot(db, bot, config, logger, notify);
 
   const shutdown = (): void => {
     scheduler?.stop();
@@ -160,6 +189,7 @@ async function main(): Promise<void> {
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
 
+  void notify('✅ news_bot запущен'); // подтверждение деплоя
   logger.info('starting long polling');
   await bot.start();
 }
