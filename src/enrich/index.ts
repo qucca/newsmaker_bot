@@ -7,9 +7,10 @@ import {
 } from '../db/articles.js';
 import { createLLMClient, type LLMClient } from '../llm/index.js';
 import { createLogger, type Logger } from '../log/index.js';
+import { z } from 'zod';
 import { deriveClusterKey } from './cluster-key.js';
 import { buildEnrichPrompt, type EnrichInput } from './prompt.js';
-import { makeBatchSchema, type EnrichItem } from './schema.js';
+import { ENRICH_BATCH_FORMAT, matchEnrichItems } from './schema.js';
 
 // Дефолты дублируют config (MAX_ENRICH_BATCH/ENRICH_RUN_CAP): оркестратор не зовёт getConfig
 // (тестируемость), слой запуска (T15) передаст значения из конфига через deps.
@@ -62,16 +63,20 @@ export async function enrichPending(
     const { system, input } = buildEnrichPrompt(batch);
 
     try {
-      const res = await llm.generateStructured<EnrichItem[]>({
+      const res = await llm.generateStructured<unknown[]>({
         system,
         input,
-        schema: makeBatchSchema(refs),
+        // валидация мягкая («это массив»), богатую форму просим у модели через formatSchema;
+        // межобъектные инварианты (кол-во/ref/дубли) проверяет per-item matchEnrichItems
+        schema: z.array(z.unknown()),
+        formatSchema: ENRICH_BATCH_FORMAT,
         schemaName: 'enrich_batch',
         maxOutputTokens: ENRICH_MAX_OUTPUT_TOKENS,
       });
+      const items = matchEnrichItems(res.value, refs);
       const ts = now();
-      const writes: EnrichmentWrite[] = res.value.map((item) => {
-        const article = chunk[item.ref]!; // ref валидирован схемой: ∈ [0, chunk.length)
+      const writes: EnrichmentWrite[] = items.map((item) => {
+        const article = chunk[item.ref]!; // ref ∈ refs гарантирован matchEnrichItems
         return {
           id: article.id,
           clusterKey: deriveClusterKey(item.entities),
@@ -86,6 +91,7 @@ export async function enrichPending(
       });
       writeEnrichment(db, writes);
       enriched += writes.length;
+      skipped += chunk.length - writes.length; // несматченные статьи → дообработаются позже
     } catch (err) {
       skipped += chunk.length;
       logger.warn('enrich chunk skipped', {

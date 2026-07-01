@@ -19,7 +19,8 @@ export function createClient(adapter: ProviderAdapter, opts: { logger: Logger })
         role: reqIn.role ?? 'default',
         system: reqIn.system,
         input: reqIn.input,
-        schema: reqIn.schema,
+        // адаптер строит output_config.format из этой схемы — берём подсказку, если задана
+        schema: reqIn.formatSchema ?? reqIn.schema,
         schemaName: reqIn.schemaName,
         maxOutputTokens: reqIn.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
       };

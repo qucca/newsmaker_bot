@@ -15,28 +15,33 @@ export const EnrichItemSchema = z.object({
 export type EnrichItem = z.infer<typeof EnrichItemSchema>;
 
 /**
- * Схема ответа на чанк: массив EnrichItem, у которого набор ref в точности совпадает
- * со входом (по количеству и значениям, без дублей). Рассинхрон → провал схемы → ретрай
- * клиента; повторный провал ловит оркестратор и пропускает чанк.
+ * Схема-ПОДСКАЗКА для output_config.format: массив EnrichItem. Ведёт модель по форме каждого
+ * объекта (поля, enum-теги), НО не гарантирует межобъектных инвариантов (ровно N, те же ref) —
+ * это невыразимо в JSON Schema. Валидацию количества/ref делаем сами, per-item (matchEnrichItems).
  */
-export function makeBatchSchema(refs: number[]): z.ZodType<EnrichItem[]> {
+export const ENRICH_BATCH_FORMAT: z.ZodType<EnrichItem[]> = z.array(EnrichItemSchema);
+
+/**
+ * Per-item отбор ответа LLM: из сырого массива берём только объекты, которые
+ *  (1) проходят EnrichItemSchema,
+ *  (2) имеют ожидаемый ref (∈ refs),
+ *  (3) не дублируют уже взятый ref (первый выигрывает).
+ * Всё остальное — лишнее/битое/дубли — молча отбрасывается. Живая модель шумит (лишний
+ * объект, тег вне словаря, не тот ref); «всё или ничего» ронял весь батч, здесь — только мусор.
+ * Несматченные статьи чанка остаются необогащёнными и дообработаются в следующем прогоне.
+ */
+export function matchEnrichItems(raw: unknown, refs: number[]): EnrichItem[] {
+  if (!Array.isArray(raw)) return [];
   const expected = new Set(refs);
-  return z.array(EnrichItemSchema).superRefine((items, ctx) => {
-    if (items.length !== refs.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `expected ${refs.length} items, got ${items.length}`,
-      });
-    }
-    const seen = new Set<number>();
-    for (const it of items) {
-      if (!expected.has(it.ref)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `unexpected ref ${it.ref}` });
-      }
-      if (seen.has(it.ref)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `duplicate ref ${it.ref}` });
-      }
-      seen.add(it.ref);
-    }
-  });
+  const seen = new Set<number>();
+  const out: EnrichItem[] = [];
+  for (const candidate of raw) {
+    const parsed = EnrichItemSchema.safeParse(candidate);
+    if (!parsed.success) continue;
+    const item = parsed.data;
+    if (!expected.has(item.ref) || seen.has(item.ref)) continue;
+    seen.add(item.ref);
+    out.push(item);
+  }
+  return out;
 }

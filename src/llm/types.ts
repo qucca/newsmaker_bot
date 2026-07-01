@@ -18,7 +18,14 @@ export interface StructuredRequest<T> {
   role?: ModelRole; // 'default' по умолчанию
   system: PromptBlock[];
   input: PromptBlock[];
+  /** Валидатор ответа: что принимаем и возвращаем как T. */
   schema: ZodType<T>;
+  /**
+   * Схема-подсказка для output_config.format (что ПРОСИМ у модели). По умолчанию = schema.
+   * Разводится со schema, когда валидация должна быть мягче подсказки — напр. батч, где
+   * клиент принимает «любой массив», а per-item отбор делает вызывающий (см. enrich).
+   */
+  formatSchema?: ZodType<unknown>;
   schemaName: string;
   maxOutputTokens?: number;
 }

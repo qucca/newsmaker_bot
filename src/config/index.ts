@@ -139,6 +139,16 @@ const PROVIDER_KEY_ENV: Record<LlmProvider, string> = {
 // Зашитые дефолты есть только у anthropic (зафиксированы в docs/design.md).
 const ANTHROPIC_DEFAULT_MODELS = { default: 'claude-haiku-4-5', render: 'claude-sonnet-4-6' };
 
+/**
+ * Пустая/пробельная env-строка трактуется как «не задано». Важно: `process.loadEnvFile()`
+ * читает строку `LLM_MODEL_DEFAULT=` как `""`, а `??` пустую строку НЕ ловит — без этого
+ * зашитый дефолт не подставлялся бы и resolveLlmConfig падал (планировщик — в fail-soft).
+ */
+function nonEmptyEnv(v: string | undefined): string | undefined {
+  const trimmed = v?.trim();
+  return trimmed !== undefined && trimmed.length > 0 ? trimmed : undefined;
+}
+
 /** Чистый разбор LLM-конфига из env. fail-fast, значения ключей в ошибки не попадают. */
 export function resolveLlmConfig(env: Record<string, string | undefined>): LlmConfig {
   const provider = env.LLM_PROVIDER;
@@ -153,12 +163,12 @@ export function resolveLlmConfig(env: Record<string, string | undefined>): LlmCo
     throw new Error(`${keyEnv}: обязателен для LLM_PROVIDER=${provider}`);
   }
   const fallback = provider === 'anthropic' ? ANTHROPIC_DEFAULT_MODELS.default : undefined;
-  const modelDefault = env.LLM_MODEL_DEFAULT ?? fallback;
-  if (modelDefault === undefined || modelDefault.length === 0) {
+  const modelDefault = nonEmptyEnv(env.LLM_MODEL_DEFAULT) ?? fallback;
+  if (modelDefault === undefined) {
     throw new Error(`LLM_MODEL_DEFAULT: обязателен для LLM_PROVIDER=${provider}`);
   }
   const renderFallback = provider === 'anthropic' ? ANTHROPIC_DEFAULT_MODELS.render : modelDefault;
-  const modelRender = env.LLM_MODEL_RENDER ?? renderFallback;
+  const modelRender = nonEmptyEnv(env.LLM_MODEL_RENDER) ?? renderFallback;
   return Object.freeze({
     provider,
     apiKey,

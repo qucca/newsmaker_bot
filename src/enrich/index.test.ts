@@ -71,15 +71,32 @@ test('enrichPending: обогащает чанк, пишет поля и cluster
   db.close();
 });
 
-test('enrichPending: битый чанк изолируется (лог+пропуск), статьи остаются необогащёнными', async () => {
+test('enrichPending: не-массив в ответе → LlmSchemaError → чанк пропущен', async () => {
   const db = memDb();
   insertArticles(db, [art({ canonicalUrl: 'https://e.com/a' })]);
-  // оба ответа невалидны (нет элементов) → LlmSchemaError после ретрая
-  const llm = fakeClient([result([]), result([])]);
+  // оба ответа не массив → не проходят z.array(z.unknown()) → LlmSchemaError после ретрая
+  const llm = fakeClient([result({ oops: true }), result({ oops: true })]);
 
   const res = await enrichPending(db, llm, { logger: silent });
   assert.deepEqual(res, { selected: 1, enriched: 0, skipped: 1 });
   assert.equal(selectUnenriched(db, 10).length, 1); // не обогащена → дообработается позже
+  db.close();
+});
+
+test('enrichPending: частичный батч — лишний/битый объект отброшен, валидные записаны', async () => {
+  const db = memDb();
+  insertArticles(db, [
+    art({ canonicalUrl: 'https://e.com/a' }),
+    art({ canonicalUrl: 'https://e.com/b' }),
+  ]);
+  // refs=[0,1]: валидный 0, битый 1 (тег вне словаря), лишний 9 — оставить только 0
+  const badItem = { ...okItem(1), tags: ['nonsense'] };
+  const llm = fakeClient([result([okItem(0), badItem, okItem(9)])]);
+
+  const res = await enrichPending(db, llm, { logger: silent });
+  assert.deepEqual(res, { selected: 2, enriched: 1, skipped: 1 });
+  const stillPending = selectUnenriched(db, 10);
+  assert.equal(stillPending.length, 1); // статья b осталась необогащённой → дообработается позже
   db.close();
 });
 

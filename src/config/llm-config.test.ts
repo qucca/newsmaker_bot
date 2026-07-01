@@ -22,6 +22,25 @@ test('не-anthropic без LLM_MODEL_DEFAULT → ошибка', () => {
   assert.throws(() => resolveLlmConfig({ LLM_PROVIDER: 'google', GOOGLE_API_KEY: 'k' }), /LLM_MODEL_DEFAULT/);
 });
 
+test('anthropic: ПУСТЫЕ LLM_MODEL_* (как из .env) → зашитые дефолты, не падает', () => {
+  // .env шлёт `LLM_MODEL_DEFAULT=` как "" — `??` бы это пропустил и уронил конфиг
+  const c = resolveLlmConfig({
+    LLM_PROVIDER: 'anthropic',
+    ANTHROPIC_API_KEY: 'k',
+    LLM_MODEL_DEFAULT: '',
+    LLM_MODEL_RENDER: '  ',
+  });
+  assert.equal(c.models.default, 'claude-haiku-4-5');
+  assert.equal(c.models.render, 'claude-sonnet-4-6');
+});
+
+test('не-anthropic с ПУСТЫМ LLM_MODEL_DEFAULT → ошибка (пусто = не задано)', () => {
+  assert.throws(
+    () => resolveLlmConfig({ LLM_PROVIDER: 'openai', OPENAI_API_KEY: 'k', LLM_MODEL_DEFAULT: '' }),
+    /LLM_MODEL_DEFAULT/,
+  );
+});
+
 test('нет ключа выбранного провайдера → ошибка без значения', () => {
   assert.throws(() => resolveLlmConfig({ LLM_PROVIDER: 'anthropic' }), /ANTHROPIC_API_KEY/);
 });
