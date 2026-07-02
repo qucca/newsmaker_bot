@@ -45,11 +45,13 @@ export interface ClusterMemberRow {
   tags: string;
   entities: string;
   neutralFacts: string | null;
+  regions: string | null;
 }
 
 const SELECT_MEMBERS = `
   SELECT id, quality, published_at AS publishedAt, fetched_at AS fetchedAt,
-         is_urgent AS isUrgent, is_major AS isMajor, tags, entities, neutral_facts AS neutralFacts
+         is_urgent AS isUrgent, is_major AS isMajor, tags, entities, neutral_facts AS neutralFacts,
+         regions
   FROM articles
   WHERE cluster_id = @clusterId`;
 
@@ -70,6 +72,7 @@ export interface ClusterAggregate {
   firstSeen: number;
   updatedAt: number;
   contentHash: string;
+  regions: string;
 }
 
 const UPDATE_CLUSTER = `
@@ -83,7 +86,8 @@ const UPDATE_CLUSTER = `
     rep_article_id = @repId,
     first_seen     = @firstSeen,
     updated_at     = @updatedAt,
-    content_hash   = @contentHash
+    content_hash   = @contentHash,
+    regions        = @regions
   WHERE id = @clusterId`;
 
 /** Перезаписывает агрегатные поля кластера вычисленными значениями. */
@@ -105,4 +109,46 @@ const SELECT_REP_SOURCE = `
 export function getClusterRepSource(db: Database.Database, clusterId: number): string | undefined {
   const row = db.prepare(SELECT_REP_SOURCE).get(clusterId) as { source: string } | undefined;
   return row?.source;
+}
+
+/** Парсит JSON-строку в массив строк. [] при любой ошибке / не-массиве. */
+function parseStrings(json: string): string[] {
+  try {
+    const p = JSON.parse(json);
+    return Array.isArray(p) ? p.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+const SELECT_REGIONS = `SELECT regions FROM clusters WHERE id = ?`;
+
+/** Коды стран кластера (JSON-массив). [] если кластера нет / битый JSON. */
+export function getClusterRegions(db: Database.Database, clusterId: number): string[] {
+  const row = db.prepare(SELECT_REGIONS).get(clusterId) as { regions: string } | undefined;
+  if (row === undefined) return [];
+  return parseStrings(row.regions);
+}
+
+export interface ClusterFeedbackFacts {
+  tags: string[];
+  regions: string[];
+  source: string;
+}
+
+const SELECT_FEEDBACK_FACTS = `
+  SELECT c.tags AS tags, c.regions AS regions, a.source AS source
+  FROM clusters c JOIN articles a ON a.id = c.rep_article_id
+  WHERE c.id = ?`;
+
+/** Факты карточки для пикера причины: теги/страны кластера + издание представителя. */
+export function getClusterFeedbackFacts(
+  db: Database.Database,
+  clusterId: number,
+): ClusterFeedbackFacts | undefined {
+  const row = db.prepare(SELECT_FEEDBACK_FACTS).get(clusterId) as
+    | { tags: string; regions: string; source: string }
+    | undefined;
+  if (row === undefined) return undefined;
+  return { tags: parseStrings(row.tags), regions: parseStrings(row.regions), source: row.source };
 }

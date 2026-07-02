@@ -10,6 +10,10 @@ export const EnrichItemSchema = z.object({
   is_urgent: z.boolean(),
   is_major: z.boolean(),
   neutral_facts: z.array(z.string().min(1)).min(2).max(6), // на языке оригинала
+  // ISO-2 сюжета; промпт просит 0..4, финальный кап до 4 — в normalizeRegions (regions.ts).
+  // .max(8) — намеренный headroom: lenient-поле не должно ронять item при лёгком переборе (matchEnrichItems
+  // дропает item при провале схемы), а нормализация всё равно обрежет до 4.
+  regions: z.array(z.string()).max(8).optional(),
 });
 
 export type EnrichItem = z.infer<typeof EnrichItemSchema>;

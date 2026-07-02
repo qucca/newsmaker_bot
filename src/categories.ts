@@ -67,3 +67,13 @@ export const CATEGORY_SET: ReadonlySet<string> = new Set(CATEGORIES);
 
 /** Набор выбираемых интересов — строгая валидация тапа в онбординге/настройках (catch-all не пройдёт). */
 export const SELECTABLE_CATEGORY_SET: ReadonlySet<string> = new Set(SELECTABLE_CATEGORIES);
+
+/** Индекс слага в CATEGORIES — компактный ключ для callback_data. -1 если нет (не должно). */
+export function categoryIndex(c: Category): number {
+  return CATEGORIES.indexOf(c);
+}
+
+/** Обратно: индекс → слаг. undefined при выходе за диапазон (битый/устаревший callback). */
+export function categoryByIndex(i: number): Category | undefined {
+  return i >= 0 && i < CATEGORIES.length ? CATEGORIES[i] : undefined;
+}

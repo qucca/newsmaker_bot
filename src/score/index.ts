@@ -3,7 +3,7 @@ import type { UserRow } from '../db/users.js';
 import {
   selectCandidateClusters,
   selectBlockedSources,
-  selectSourcePenalties,
+  selectReasonPenalties,
 } from '../db/score.js';
 import { rankClusters, type ScoredCluster } from './rank.js';
 
@@ -24,6 +24,6 @@ export function scoreForUser(
   const minUpdated = now - deps.windowMs;
   const candidates = selectCandidateClusters(db, user.chatId, minUpdated);
   const blocked = selectBlockedSources(db, user.chatId);
-  const penalties = selectSourcePenalties(db, user.chatId);
+  const penalties = selectReasonPenalties(db, user.chatId);
   return rankClusters(candidates, user.interestTags, blocked, penalties, user.maxItemsPerSend);
 }

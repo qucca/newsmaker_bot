@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { runMigrations } from '../db/migrate.js';
-import { clusterPending } from './index.js';
+import { clusterPending, recomputeCluster } from './index.js';
+import { createCluster } from '../db/clusters.js';
 
 const H = 3_600_000;
 const DEPS = { windowMs: 72 * H, runCap: 1000 };
@@ -15,6 +16,37 @@ function memDb(): Database.Database {
 }
 
 let seq = 0;
+
+// Вставляет обогащённую статью, привязанную к кластеру clusterId; возвращает её id.
+function seedMember(
+  db: Database.Database,
+  clusterId: number,
+  over: Record<string, unknown> = {},
+): number {
+  const v = {
+    source: 'e.com',
+    quality: 50,
+    publishedAt: 1000,
+    fetchedAt: 2000,
+    isUrgent: 0,
+    isMajor: 0,
+    tags: '["world"]',
+    entities: '["NATO"]',
+    neutralFacts: '["A.","B."]',
+    regions: '["GLOBAL"]',
+    ...over,
+  };
+  const info = db
+    .prepare(
+      `INSERT INTO articles (canonical_url, source, title, fetched_at, published_at, cluster_id,
+         enriched_at, cluster_key, entities, tags, quality, is_urgent, is_major, neutral_facts, regions)
+       VALUES (@url, @source, 'T', @fetchedAt, @publishedAt, @clusterId,
+         5000, 'k', @entities, @tags, @quality, @isUrgent, @isMajor, @neutralFacts, @regions)`,
+    )
+    .run({ url: `https://e.com/${seq++}`, clusterId, ...v });
+  return Number(info.lastInsertRowid);
+}
+
 // Вставляет обогащённую, ещё НЕ кластеризованную статью; возвращает её id.
 function addArticle(db: Database.Database, over: Record<string, unknown> = {}): number {
   const v = {
@@ -137,5 +169,17 @@ test('clusterPending: повторный прогон без новых стат
   assert.equal(res2.selected, 0);
   assert.equal(res2.created, 0);
   assert.equal(res2.joined, 0);
+  db.close();
+});
+
+test('recomputeCluster: промотирует regions представителя', () => {
+  const db = memDb();
+  const cid = createCluster(db, 'k', 1000);
+  // представитель = статья с наивысшим качеством (см. pickRepresentative)
+  seedMember(db, cid, { quality: 90, regions: '["RU","UA"]' });
+  seedMember(db, cid, { quality: 10, regions: '["US"]' });
+  recomputeCluster(db, cid);
+  const row = db.prepare(`SELECT regions FROM clusters WHERE id = ?`).get(cid) as { regions: string };
+  assert.equal(row.regions, '["RU","UA"]');
   db.close();
 });

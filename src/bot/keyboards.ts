@@ -1,10 +1,12 @@
 import { InlineKeyboard } from 'grammy';
 import type { Lang } from '../langs.js';
-import { CATEGORY_GROUPS } from '../categories.js';
+import { CATEGORY_GROUPS, categoryIndex } from '../categories.js';
 import { encodeCb } from './callback.js';
 import { t, categoryLabel } from './i18n.js';
 import { TZ_PRESETS } from './timezone.js';
 import { WINDOW_PRESETS, VOLUME_PRESETS } from './onboarding/reducer.js';
+import { flagEmoji } from '../card/region.js';
+import type { ReasonOption } from './feedback-reason.js';
 
 // Построители inline-клавиатур. callback_data — компактные id через encodeCb (разделитель '~').
 
@@ -92,6 +94,28 @@ export function confirmDeleteKb(lang: Lang): InlineKeyboard {
 
 export function openSettingsKb(lang: Lang): InlineKeyboard {
   return new InlineKeyboard().text(t(lang, 'onb_btn_open_settings'), encodeCb(['set', 'open']));
+}
+
+/** Пикер причины при 👎 (T-multidim). Каждая опция — своя строка; внизу «↩︎ Назад» к 👍/👎. */
+export function feedbackReasonKb(lang: Lang, clusterId: number, options: ReasonOption[]): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  const id = String(clusterId);
+  for (const o of options) {
+    if (o.type === 'pair') {
+      kb.text(t(lang, 'fb_reason_pair', { tag: categoryLabel(lang, o.tag), flag: flagEmoji(o.cc) }),
+        encodeCb(['fb', 'rp', id, String(categoryIndex(o.tag)), o.cc])).row();
+    } else if (o.type === 'tag') {
+      kb.text(t(lang, 'fb_reason_tag', { tag: categoryLabel(lang, o.tag) }),
+        encodeCb(['fb', 'rt', id, String(categoryIndex(o.tag))])).row();
+    } else if (o.type === 'region') {
+      kb.text(t(lang, 'fb_reason_region', { flag: flagEmoji(o.cc) }),
+        encodeCb(['fb', 'rr', id, o.cc])).row();
+    } else {
+      kb.text(t(lang, 'fb_reason_source'), encodeCb(['fb', 'rs', id])).row();
+    }
+  }
+  kb.text(t(lang, 'fb_reason_back'), encodeCb(['fb', 'bk', id]));
+  return kb;
 }
 
 // Кнопки фидбэка 👍/👎 на карточке (T14). callback_data несёт cluster_id (голос на уровне

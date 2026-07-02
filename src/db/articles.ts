@@ -73,6 +73,7 @@ export interface EnrichmentWrite {
   isUrgent: boolean;
   isMajor: boolean;
   neutralFacts: string[];
+  regions: string[];
   enrichedAt: number; // epoch ms
 }
 
@@ -85,7 +86,8 @@ const UPDATE_ENRICHMENT = `
     quality       = @quality,
     is_urgent     = @isUrgent,
     is_major      = @isMajor,
-    neutral_facts = @neutralFacts
+    neutral_facts = @neutralFacts,
+    regions       = @regions
   WHERE id = @id`;
 
 /**
@@ -110,6 +112,7 @@ export function writeEnrichment(
         isUrgent: r.isUrgent ? 1 : 0,
         isMajor: r.isMajor ? 1 : 0,
         neutralFacts: JSON.stringify(r.neutralFacts),
+        regions: JSON.stringify(r.regions),
       }).changes;
     }
     return updated;

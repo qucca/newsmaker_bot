@@ -4,8 +4,10 @@ import type { ScoredCluster } from '../score/rank.js';
 import { getSummary } from '../db/summaries.js';
 import { selectRepresentative } from '../db/articles.js';
 import { getCardsSentTotal } from '../db/users.js';
+import { getClusterRegions } from '../db/clusters.js';
 import { createLogger, type Logger } from '../log/index.js';
 import { composeCard, type CardMessage } from './compose.js';
+import { primaryRegion } from './region.js';
 
 // Окно калибровки: кнопки 👍/👎 показываем только на первых N карточках, что юзер вообще получил
 // (lifetime-счётчик users.cards_sent_total — НЕ COUNT(sent_log): ретенция чистит sent_log, а
@@ -61,6 +63,7 @@ export function buildUserCards(
       });
       continue;
     }
+    const region = primaryRegion(getClusterRegions(db, s.clusterId));
     const message = composeCard({
       clusterId: s.clusterId,
       withFeedback,
@@ -70,6 +73,7 @@ export function buildUserCards(
       source: rep.source,
       whyTags: s.matchedTags,
       lang: user.lang,
+      region,
     });
     cards.push({ clusterId: s.clusterId, message });
   }

@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { deriveClusterKey } from './cluster-key.js';
 import { buildEnrichPrompt, type EnrichInput } from './prompt.js';
 import { ENRICH_BATCH_FORMAT, matchEnrichItems } from './schema.js';
+import { normalizeRegions } from './regions.js';
 
 // Дефолты дублируют config (MAX_ENRICH_BATCH/ENRICH_RUN_CAP): оркестратор не зовёт getConfig
 // (тестируемость), слой запуска (T15) передаст значения из конфига через deps.
@@ -86,6 +87,7 @@ export async function enrichPending(
           isUrgent: item.is_urgent,
           isMajor: item.is_major,
           neutralFacts: item.neutral_facts,
+          regions: normalizeRegions(item.regions),
           enrichedAt: ts,
         };
       });

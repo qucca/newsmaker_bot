@@ -3,10 +3,11 @@ import type Database from 'better-sqlite3';
 // Репозиторий ранжирования (T10): «глупый» SQL без доменной логики. Доменные правила
 // (скор, тай-брейки) — в src/score. source_count считаем на лету COUNT(DISTINCT source).
 
-/** Кандидат-кластер для ранжирования. tags — JSON-строка (парсит ядро ранжирования). */
+/** Кандидат-кластер для ранжирования. tags/regions — JSON-строки (парсит ядро ранжирования). */
 export interface CandidateRow {
   id: number;
   tags: string;
+  regions: string;
   quality: number | null;
   isMajor: number;
   updatedAt: number;
@@ -16,7 +17,7 @@ export interface CandidateRow {
 }
 
 const SELECT_CANDIDATES = `
-  SELECT c.id, c.tags, c.quality, c.is_major AS isMajor,
+  SELECT c.id, c.tags, c.regions, c.quality, c.is_major AS isMajor,
          c.updated_at AS updatedAt, c.rep_article_id AS repArticleId,
          r.source AS repSource,
          (SELECT COUNT(DISTINCT a.source) FROM articles a WHERE a.cluster_id = c.id) AS sourceCount
@@ -42,10 +43,26 @@ export function selectBlockedSources(db: Database.Database, chatId: number): Set
   return new Set(rows.map((r) => r.source));
 }
 
-/** Свёртка фидбэка: источник → нетто SUM(vote) (отрицательное = больше дизлайков). */
-export function selectSourcePenalties(db: Database.Database, chatId: number): Map<string, number> {
-  const rows = db
-    .prepare(`SELECT source, SUM(vote) AS net FROM feedback WHERE chat_id = ? GROUP BY source`)
-    .all(chatId) as { source: string; net: number }[];
-  return new Map(rows.map((r) => [r.source, r.net]));
+export interface ReasonPenalties {
+  source: Map<string, number>;
+  tag: Map<string, number>;
+  region: Map<string, number>;
+  pair: Map<string, number>; // ключ "tag|CC"
+}
+
+const SELECT_REASON_PENALTIES = `
+  SELECT reason_type AS type, reason_key AS key, SUM(vote) AS net
+  FROM feedback
+  WHERE chat_id = ? AND reason_type IS NOT NULL
+  GROUP BY reason_type, reason_key`;
+
+/** Свёртка дизлайков по корзинам (source/tag/region/pair). Лайки (reason_type NULL) не входят. */
+export function selectReasonPenalties(db: Database.Database, chatId: number): ReasonPenalties {
+  const rows = db.prepare(SELECT_REASON_PENALTIES).all(chatId) as { type: string; key: string; net: number }[];
+  const out: ReasonPenalties = { source: new Map(), tag: new Map(), region: new Map(), pair: new Map() };
+  for (const r of rows) {
+    const bucket = out[r.type as keyof ReasonPenalties];
+    if (bucket !== undefined) bucket.set(r.key, r.net);
+  }
+  return out;
 }

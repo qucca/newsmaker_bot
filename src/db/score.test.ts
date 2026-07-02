@@ -5,7 +5,7 @@ import { runMigrations } from './migrate.js';
 import {
   selectCandidateClusters,
   selectBlockedSources,
-  selectSourcePenalties,
+  selectReasonPenalties,
 } from './score.js';
 
 function memDb(): Database.Database {
@@ -110,17 +110,20 @@ test('selectBlockedSources: возвращает множество источн
   db.close();
 });
 
-test('selectSourcePenalties: свёртка SUM(vote) по источнику', () => {
+test('selectReasonPenalties: net по (reason_type, reason_key), лайки без причины не в счёт', () => {
   const db = memDb();
-  seedUser(db, 1);
-  const a = seedCluster(db);
-  const b = seedCluster(db);
-  const c = seedCluster(db);
-  db.prepare(`INSERT INTO feedback (chat_id, cluster_id, vote, source, created_at) VALUES (1, ?, -1, 'n.com', 0)`).run(a);
-  db.prepare(`INSERT INTO feedback (chat_id, cluster_id, vote, source, created_at) VALUES (1, ?, -1, 'n.com', 0)`).run(b);
-  db.prepare(`INSERT INTO feedback (chat_id, cluster_id, vote, source, created_at) VALUES (1, ?, 1, 'p.com', 0)`).run(c);
-  const got = selectSourcePenalties(db, 1);
-  assert.equal(got.get('n.com'), -2);
-  assert.equal(got.get('p.com'), 1);
-  db.close();
+  db.prepare(`INSERT INTO users (chat_id, lang, tz, max_items_per_send, created_at, updated_at) VALUES (1,'ru','UTC',5,0,0)`).run();
+  const mk = (cid: number, vote: number, rt: string | null, rk: string | null) => {
+    db.prepare(`INSERT INTO clusters (cluster_key, first_seen, updated_at) VALUES ('k',1,1)`).run();
+    db.prepare(`INSERT INTO feedback (chat_id, cluster_id, vote, source, reason_type, reason_key, created_at)
+                VALUES (1, ?, ?, 'e.com', ?, ?, 0)`).run(cid, vote, rt, rk);
+  };
+  mk(1, -1, 'pair', 'football|RU');
+  mk(2, -1, 'pair', 'football|RU'); // две разные истории → net -2
+  mk(3, -1, 'tag', 'football');
+  mk(4, 1, null, null); // лайк без причины — игнор
+  const p = selectReasonPenalties(db, 1);
+  assert.equal(p.pair.get('football|RU'), -2);
+  assert.equal(p.tag.get('football'), -1);
+  assert.equal(p.source.size, 0);
 });

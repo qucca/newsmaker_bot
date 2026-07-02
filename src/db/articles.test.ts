@@ -243,3 +243,31 @@ test('selectRepresentative: undefined когда строки нет', () => {
   assert.equal(selectRepresentative(db, 999), undefined);
   db.close();
 });
+
+test('writeEnrichment: пишет regions JSON в articles', () => {
+  const db = memDb();
+  const id = Number(
+    db
+      .prepare(
+        `INSERT INTO articles (canonical_url, source, title, fetched_at) VALUES ('u1','e.com','t',1)`,
+      )
+      .run().lastInsertRowid,
+  );
+  writeEnrichment(db, [
+    {
+      id,
+      clusterKey: 'k',
+      entities: ['E'],
+      tags: ['football'],
+      quality: 50,
+      isUrgent: false,
+      isMajor: false,
+      neutralFacts: ['a', 'b'],
+      regions: ['RU', 'UA'],
+      enrichedAt: 10,
+    },
+  ]);
+  const row = db.prepare(`SELECT regions FROM articles WHERE id = ?`).get(id) as { regions: string };
+  assert.equal(row.regions, '["RU","UA"]');
+  db.close();
+});

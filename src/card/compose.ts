@@ -3,6 +3,7 @@ import type { Lang } from '../langs.js';
 import type { Category } from '../categories.js';
 import { t, categoryLabel } from '../bot/i18n.js';
 import { feedbackKb } from '../bot/keyboards.js';
+import { flagEmoji } from './region.js';
 
 // T12: чистая детерминированная сборка HTML-карточки. Без БД и без IO.
 // parse_mode HTML — экранируем только & < > (в href ещё "). Эмодзи — литералы шаблона.
@@ -20,6 +21,7 @@ export interface CardInput {
   source: string; // articles.source представителя
   whyTags: Category[]; // matchedTags (порядок = интересы юзера)
   lang: Lang;
+  region?: string; // основная страна (ISO-2) или undefined для GLOBAL
 }
 
 export interface CardMessage {
@@ -47,7 +49,9 @@ export function composeCard(input: CardInput): CardMessage {
     '',
     escapeHtml(input.summary),
     '',
-    `🔗 <a href="${escapeHref(input.url)}">${linkText}</a>`,
+    input.region
+      ? `🔗 <a href="${escapeHref(input.url)}">${linkText}</a> ${flagEmoji(input.region)}`
+      : `🔗 <a href="${escapeHref(input.url)}">${linkText}</a>`,
   ];
 
   const tags = input.whyTags.slice(0, MAX_WHY_TAGS);

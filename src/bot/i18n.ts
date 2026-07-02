@@ -19,6 +19,7 @@ export const MSG_KEYS = [
   'win_morning', 'win_day', 'win_evening', 'win_night',
   'card_read_at', 'card_why',
   'fb_thanks', 'fb_stale',
+  'fb_reason_prompt', 'fb_reason_pair', 'fb_reason_tag', 'fb_reason_region', 'fb_reason_source', 'fb_reason_back',
 ] as const;
 
 export type MsgKey = (typeof MSG_KEYS)[number];
@@ -74,6 +75,12 @@ const MESSAGES: Record<Lang, Record<MsgKey, string>> = {
     card_why: 'Почему ты это видишь: {tags}',
     fb_thanks: 'Спасибо за отзыв!',
     fb_stale: 'Эта новость уже недоступна.',
+    fb_reason_prompt: 'Почему меньше такого?',
+    fb_reason_pair: '{tag} × {flag}',
+    fb_reason_tag: 'Только тема: {tag}',
+    fb_reason_region: 'Только регион: {flag}',
+    fb_reason_source: 'Издание',
+    fb_reason_back: '↩︎ Назад',
   },
   en: {
     onb_greeting: '👋 Hi! I send you a news digest tailored to your interests. Let’s set it up in a minute.',
@@ -125,6 +132,12 @@ const MESSAGES: Record<Lang, Record<MsgKey, string>> = {
     card_why: 'Why you see this: {tags}',
     fb_thanks: 'Thanks for your feedback!',
     fb_stale: 'This item is no longer available.',
+    fb_reason_prompt: 'Why less of this?',
+    fb_reason_pair: '{tag} × {flag}',
+    fb_reason_tag: 'Topic only: {tag}',
+    fb_reason_region: 'Region only: {flag}',
+    fb_reason_source: 'Source',
+    fb_reason_back: '↩︎ Back',
   },
 };
 

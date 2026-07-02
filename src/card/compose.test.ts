@@ -78,3 +78,20 @@ test('composeCard: withFeedback=false — клавиатуры нет', () => {
   const card = composeCard(input({ withFeedback: false }));
   assert.equal(card.replyMarkup, undefined);
 });
+
+test('composeCard: флаг у строки-ссылки при заданном region', () => {
+  const msg = composeCard({
+    clusterId: 1, withFeedback: false, title: 'T', summary: 'S',
+    url: 'https://e.com/a', source: 'e.com', whyTags: [], lang: 'ru', region: 'RU',
+  });
+  assert.ok(msg.text.includes('🇷🇺'));
+  assert.ok(/🔗 <a href=.+<\/a> 🇷🇺/.test(msg.text)); // флаг именно на строке ссылки
+});
+
+test('composeCard: без region — без флага', () => {
+  const msg = composeCard({
+    clusterId: 1, withFeedback: false, title: 'T', summary: 'S',
+    url: 'https://e.com/a', source: 'e.com', whyTags: [], lang: 'ru',
+  });
+  assert.ok(!/🇷🇺/.test(msg.text));
+});

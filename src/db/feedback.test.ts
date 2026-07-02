@@ -28,7 +28,15 @@ test('recordFeedback: вставляет голос (chat_id, cluster_id, vote, 
   const db = memDb();
   const { chatId, clusterId } = seed(db);
 
-  recordFeedback(db, { chatId, clusterId, vote: 1, source: 'bbc.com', now: 100 });
+  recordFeedback(db, {
+    chatId,
+    clusterId,
+    vote: 1,
+    source: 'bbc.com',
+    reasonType: null,
+    reasonKey: null,
+    now: 100,
+  });
 
   const row = db
     .prepare(
@@ -42,8 +50,24 @@ test('recordFeedback: переголос перезаписывает vote+creat
   const db = memDb();
   const { chatId, clusterId } = seed(db);
 
-  recordFeedback(db, { chatId, clusterId, vote: 1, source: 'bbc.com', now: 100 });
-  recordFeedback(db, { chatId, clusterId, vote: -1, source: 'bbc.com', now: 200 });
+  recordFeedback(db, {
+    chatId,
+    clusterId,
+    vote: 1,
+    source: 'bbc.com',
+    reasonType: null,
+    reasonKey: null,
+    now: 100,
+  });
+  recordFeedback(db, {
+    chatId,
+    clusterId,
+    vote: -1,
+    source: 'bbc.com',
+    reasonType: null,
+    reasonKey: null,
+    now: 200,
+  });
 
   const rows = db.prepare(`SELECT vote AS v, created_at AS t FROM feedback`).all() as {
     v: number;
@@ -58,6 +82,54 @@ test('getFeedbackVote: текущий голос или undefined', () => {
   const { chatId, clusterId } = seed(db);
 
   assert.equal(getFeedbackVote(db, chatId, clusterId), undefined);
-  recordFeedback(db, { chatId, clusterId, vote: -1, source: 'x', now: 1 });
+  recordFeedback(db, {
+    chatId,
+    clusterId,
+    vote: -1,
+    source: 'x',
+    reasonType: null,
+    reasonKey: null,
+    now: 1,
+  });
   assert.equal(getFeedbackVote(db, chatId, clusterId), -1);
+});
+
+test('recordFeedback: пишет reason_type/reason_key, переголос перезаписывает', () => {
+  const db = memDb();
+  const { chatId, clusterId } = seed(db);
+
+  recordFeedback(db, {
+    chatId,
+    clusterId,
+    vote: -1,
+    source: 'e.com',
+    reasonType: 'pair',
+    reasonKey: 'football|RU',
+    now: 5,
+  });
+
+  let row = db
+    .prepare(
+      `SELECT vote, reason_type, reason_key FROM feedback WHERE chat_id = ? AND cluster_id = ?`,
+    )
+    .get(chatId, clusterId) as { vote: number; reason_type: string; reason_key: string };
+  assert.deepEqual([row.vote, row.reason_type, row.reason_key], [-1, 'pair', 'football|RU']);
+
+  // переголос в 👍 обнуляет причину
+  recordFeedback(db, {
+    chatId,
+    clusterId,
+    vote: 1,
+    source: 'e.com',
+    reasonType: null,
+    reasonKey: null,
+    now: 6,
+  });
+
+  row = db
+    .prepare(
+      `SELECT vote, reason_type, reason_key FROM feedback WHERE chat_id = ? AND cluster_id = ?`,
+    )
+    .get(chatId, clusterId) as { vote: number; reason_type: string | null; reason_key: string | null };
+  assert.deepEqual([row.vote, row.reason_type, row.reason_key], [1, null, null]);
 });

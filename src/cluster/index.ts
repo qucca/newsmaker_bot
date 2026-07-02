@@ -61,6 +61,7 @@ export function recomputeCluster(db: Database.Database, clusterId: number): void
     firstSeen,
     updatedAt,
     contentHash: hashNeutralFacts(facts),
+    regions: rep.regions ?? '["GLOBAL"]',
   });
 }
 

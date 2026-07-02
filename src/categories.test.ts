@@ -4,6 +4,8 @@ import {
   CATEGORIES,
   SELECTABLE_CATEGORIES,
   CATEGORY_GROUPS,
+  categoryIndex,
+  categoryByIndex,
 } from './categories.js';
 
 test('таксономия: слаги уникальны', () => {
@@ -74,4 +76,11 @@ test('P4: новые тематические листья присутству�
   for (const leaf of ['personal_finance', 'real_estate', 'weather_disasters'] as const) {
     assert.ok((SELECTABLE_CATEGORIES as readonly string[]).includes(leaf), `нет листа ${leaf}`);
   }
+});
+
+test('categoryIndex ↔ categoryByIndex round-trip', () => {
+  assert.equal(categoryByIndex(categoryIndex('football')), 'football');
+  assert.equal(categoryIndex(CATEGORIES[0]!), 0);
+  assert.equal(categoryByIndex(-1), undefined);
+  assert.equal(categoryByIndex(9999), undefined);
 });

@@ -8,6 +8,8 @@ import {
   selectClusterMembers,
   updateClusterAggregate,
   getClusterRepSource,
+  getClusterRegions,
+  getClusterFeedbackFacts,
 } from './clusters.js';
 
 function memDb(): Database.Database {
@@ -34,14 +36,15 @@ function seedMember(
     tags: '["world"]',
     entities: '["NATO"]',
     neutralFacts: '["A.","B."]',
+    regions: '["GLOBAL"]',
     ...over,
   };
   const info = db
     .prepare(
       `INSERT INTO articles (canonical_url, source, title, fetched_at, published_at, cluster_id,
-         enriched_at, cluster_key, entities, tags, quality, is_urgent, is_major, neutral_facts)
+         enriched_at, cluster_key, entities, tags, quality, is_urgent, is_major, neutral_facts, regions)
        VALUES (@url, @source, 'T', @fetchedAt, @publishedAt, @clusterId,
-         5000, 'k', @entities, @tags, @quality, @isUrgent, @isMajor, @neutralFacts)`,
+         5000, 'k', @entities, @tags, @quality, @isUrgent, @isMajor, @neutralFacts, @regions)`,
     )
     .run({ url: `https://e.com/${seq++}`, clusterId, ...v });
   return Number(info.lastInsertRowid);
@@ -97,10 +100,11 @@ test('updateClusterAggregate: перезаписывает агрегатные 
     firstSeen: 500,
     updatedAt: 1500,
     contentHash: 'deadbeef',
+    regions: '["US"]',
   });
   const r = db
     .prepare(
-      `SELECT tags, quality, is_urgent, is_major, rep_article_id, first_seen, updated_at, content_hash
+      `SELECT tags, quality, is_urgent, is_major, rep_article_id, first_seen, updated_at, content_hash, regions
        FROM clusters WHERE id = ?`,
     )
     .get(cid) as Record<string, unknown>;
@@ -110,6 +114,7 @@ test('updateClusterAggregate: перезаписывает агрегатные 
   assert.equal(r.rep_article_id, aid);
   assert.equal(r.first_seen, 500);
   assert.equal(r.content_hash, 'deadbeef');
+  assert.equal(r.regions, '["US"]');
   db.close();
 });
 
@@ -126,5 +131,32 @@ test('getClusterRepSource: нет представителя → undefined', () 
   const db = memDb();
   const cid = createCluster(db, 'k', 1000);
   assert.equal(getClusterRepSource(db, cid), undefined);
+  db.close();
+});
+
+test('getClusterFeedbackFacts: tags/regions/source представителя', () => {
+  const db = memDb();
+  const cid = createCluster(db, 'k', 1);
+  const aid = seedMember(db, cid, { source: 'sports.ru', tags: '["football"]', regions: '["RU"]' });
+  db.prepare(`UPDATE clusters SET tags='["football"]', regions='["RU"]', rep_article_id=? WHERE id=?`).run(aid, cid);
+  assert.deepEqual(getClusterFeedbackFacts(db, cid), { tags: ['football'], regions: ['RU'], source: 'sports.ru' });
+  assert.equal(getClusterFeedbackFacts(db, 999999), undefined);
+  db.close();
+});
+
+test('getClusterRegions: парсит JSON-массив кодов', () => {
+  const db = memDb();
+  const cid = createCluster(db, 'k', 1);
+  db.prepare(`UPDATE clusters SET regions = '["RU","UA"]' WHERE id = ?`).run(cid);
+  assert.deepEqual(getClusterRegions(db, cid), ['RU', 'UA']);
+  assert.deepEqual(getClusterRegions(db, 999999), []); // нет кластера
+  db.prepare(`UPDATE clusters SET regions = '42' WHERE id = ?`).run(cid);
+  assert.deepEqual(getClusterRegions(db, cid), []);
+  db.prepare(`UPDATE clusters SET regions = '[]' WHERE id = ?`).run(cid);
+  assert.deepEqual(getClusterRegions(db, cid), []);
+  // Примечание: невалидный JSON (напр. 'not-valid-json') в regions НЕВОЗМОЖЕН —
+  // колонка clusters.regions несёт CHECK (json_valid(regions)) (миграция 0005),
+  // поэтому catch-ветка getClusterRegions недостижима через БД (defensive-only).
+  // Достижимая грань — валидный не-массив ('42'/'[]') — покрыта выше.
   db.close();
 });
